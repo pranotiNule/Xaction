@@ -59,29 +59,6 @@ const Login = () => {
     }
 
     try {
-      // FRONTEND BYPASS FOR DISTRIBUTION GAME SIMULATION
-      // Check for hardcoded credentials before any backend network requests
-      if (activeSimulation === "Distribution Simulation" && activeRole === "student") {
-        if (email.toLowerCase() === "testgame45" && password === "testgame45") {
-          // Store dummy authentication data for the frontend game
-          localStorage.setItem('token', 'dummy-game-token-12345');
-          localStorage.setItem('userRole', 'student');
-          localStorage.setItem('userEmail', email);
-          localStorage.setItem('simulation', activeSimulation);
-          localStorage.setItem('userName', 'Sunshine Agency');
-          localStorage.setItem('userDegree', activeSimulation);
-          
-          setLoading(false);
-          // Navigate to the game introduction screen
-          navigate("/game-distribution/intro");
-          return; // Exit here, do not proceed to backend calls
-        } else {
-          setError("Invalid credentials for Distribution Simulation. Hint: use 'testgame45' for both.");
-          setLoading(false);
-          return;
-        }
-      }
-
       // First check if server is accessible for all other logins
       try {
         await axios.options(API_BASE_URL);
@@ -185,12 +162,6 @@ const Login = () => {
       options.push(
         <option key="superadmin" value="superadmin">Super Admin</option>
       );
-    } else if (activeSimulation === "Distribution Simulation") {
-      // For Distribution Simulation, show Participant and Admin options
-      options.push(
-        <option key="student" value="student">Participant</option>,
-        <option key="admin" value="admin">Admin</option>
-      );
     } else if (activeSimulation) {
       // For any simulation (MBA, BE, BTech, Law, etc.), show student and admin options
       options.push(
@@ -211,7 +182,7 @@ const Login = () => {
         {!activeSimulation && (
           <div className="text-center mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
             <p className="text-yellow-700 text-sm">
-              ⚠️ Please select a simulation from the <a href="/simulation" className="text-blue-600 underline">simulation page</a>
+              Please select a simulation from the <a href="/simulation" className="text-blue-600 underline">simulation page</a>
             </p>
           </div>
         )}

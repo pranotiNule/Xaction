@@ -12,7 +12,7 @@ const AdminLoginPage = () => {
     e.preventDefault();
     
     // Support only game admin credentials
-    if (username === "admin@123" && password === "xaction@2025") {
+    if ((username === "admin@123" || username === "gamesimadmin") && password === "xaction@2025") {
       navigate("/admin/game-results");
     } else {
       setError("Invalid username or password");
@@ -57,7 +57,7 @@ const AdminLoginPage = () => {
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm font-medium">
-              ⚠️ {error}
+              Error: {error}
             </div>
           )}
 

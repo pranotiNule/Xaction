@@ -5,19 +5,7 @@ import { supabase } from "./supabaseClient";
 const ADMIN_USERNAME = "gamesimadmin";
 const ADMIN_PASSWORD = "xaction@2025";
 
-const LS_KEY = "game_sim_users";
-
-const loadUsers = () => {
-  try {
-    return JSON.parse(localStorage.getItem(LS_KEY) || "[]");
-  } catch {
-    return [];
-  }
-};
-
-const saveUsers = (users) => {
-  localStorage.setItem(LS_KEY, JSON.stringify(users));
-};
+// No localStorage helper needed. Supabase is used directly.
 
 const GameSimulationAdminPanel = ({ onClose }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -42,12 +30,28 @@ const GameSimulationAdminPanel = ({ onClose }) => {
   const [revealIndex, setRevealIndex] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-  const handleLogin = (e) => {
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("game_simulation_users")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!error) {
+        setUsers(data || []);
+      } else {
+        console.error("Error fetching users:", error.message);
+      }
+    } catch (err) {
+      console.error("Fetch users error:", err);
+    }
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       setIsLoggedIn(true);
       setLoginError("");
-      setUsers(loadUsers());
+      await fetchUsers();
       fetchResults();
     } else {
       setLoginError("Invalid username or password.");
@@ -88,7 +92,7 @@ const GameSimulationAdminPanel = ({ onClose }) => {
   }, [onClose]);
 
   // ── User management handlers ──────────────────────────────────
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
     setUserFormError("");
     setUserFormSuccess("");
@@ -101,35 +105,57 @@ const GameSimulationAdminPanel = ({ onClose }) => {
       setUserFormError("Password must be at least 6 characters."); return;
     }
 
-    const current = loadUsers();
-    if (current.find((u) => u.email.toLowerCase() === newEmail.toLowerCase())) {
-      setUserFormError("A user with this email already exists."); return;
-    }
+    try {
+      // Check if user already exists
+      const { data: existingUser, error: checkErr } = await supabase
+        .from("game_simulation_users")
+        .select("id")
+        .eq("email", newEmail.trim().toLowerCase())
+        .maybeSingle();
 
-    const updated = [
-      ...current,
-      {
-        id: Date.now().toString(),
-        name: newName.trim(),
-        email: newEmail.trim().toLowerCase(),
-        password: newPass,
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    saveUsers(updated);
-    setUsers(updated);
-    setNewName("");
-    setNewEmail("");
-    setNewPass("");
-    setUserFormSuccess("User credentials created successfully!");
-    setTimeout(() => setUserFormSuccess(""), 3000);
+      if (checkErr) throw checkErr;
+      if (existingUser) {
+        setUserFormError("A user with this email already exists.");
+        return;
+      }
+
+      // Insert new user into Supabase
+      const { error: insertErr } = await supabase
+        .from("game_simulation_users")
+        .insert([{
+          name: newName.trim(),
+          email: newEmail.trim().toLowerCase(),
+          password: newPass
+        }]);
+
+      if (insertErr) throw insertErr;
+
+      setNewName("");
+      setNewEmail("");
+      setNewPass("");
+      setUserFormSuccess("User credentials created successfully!");
+      fetchUsers();
+      setTimeout(() => setUserFormSuccess(""), 3000);
+    } catch (err) {
+      console.error("Create user error:", err);
+      setUserFormError("Failed to create user. Make sure table exists: " + err.message);
+    }
   };
 
-  const handleDeleteUser = (id) => {
-    const updated = loadUsers().filter((u) => u.id !== id);
-    saveUsers(updated);
-    setUsers(updated);
-    setDeleteConfirm(null);
+  const handleDeleteUser = async (id) => {
+    try {
+      const { error } = await supabase
+        .from("game_simulation_users")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      setDeleteConfirm(null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Delete user error:", err);
+      alert("Failed to delete user: " + err.message);
+    }
   };
 
   return (
@@ -142,7 +168,7 @@ const GameSimulationAdminPanel = ({ onClose }) => {
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-4 flex justify-between items-center">
           <div>
-            <h1 className="text-white font-bold text-xl">🎮 Game Simulation Admin Panel</h1>
+            <h1 className="text-white font-bold text-xl">Game Simulation Admin Panel</h1>
             <p className="text-emerald-100 text-sm">View all player results & manage user credentials</p>
           </div>
           <button
@@ -202,7 +228,7 @@ const GameSimulationAdminPanel = ({ onClose }) => {
 
                 {loginError && (
                   <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
-                    ⚠️ {loginError}
+                    Error: {loginError}
                   </div>
                 )}
 
@@ -233,7 +259,7 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                       : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
-                  📊 Game Results
+                  Game Results
                 </button>
                 <button
                   onClick={() => setActiveTab("users")}
@@ -242,7 +268,7 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                       : "text-gray-500 hover:text-gray-700"
                     }`}
                 >
-                  👥 Manage Users
+                  Manage Users
                   {users.length > 0 && (
                     <span className="ml-1.5 bg-emerald-500 text-white text-xs rounded-full px-1.5 py-0.5">
                       {users.length}
@@ -257,7 +283,7 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                     onClick={fetchResults}
                     className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold px-4 py-2 rounded-lg text-sm transition-colors border border-emerald-200"
                   >
-                    🔄 Refresh
+                    Refresh
                   </button>
                 )}
                 <button
@@ -400,9 +426,9 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                         <button
                           type="button"
                           onClick={() => setShowNewPass(!showNewPass)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base"
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-semibold"
                         >
-                          {showNewPass ? "🙈" : "👁️"}
+                          {showNewPass ? "Hide" : "Show"}
                         </button>
                       </div>
                     </div>
@@ -411,12 +437,12 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                     <div className="sm:col-span-3 flex flex-col sm:flex-row sm:items-center gap-3">
                       {userFormError && (
                         <p className="text-sm text-red-600 bg-red-50 border border-red-200 px-3 py-2 rounded-lg flex-1">
-                          ⚠️ {userFormError}
+                          Error: {userFormError}
                         </p>
                       )}
                       {userFormSuccess && (
                         <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-lg flex-1">
-                          ✅ {userFormSuccess}
+                          Success: {userFormSuccess}
                         </p>
                       )}
                       {!userFormError && !userFormSuccess && <div className="flex-1" />}
@@ -424,7 +450,7 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                         type="submit"
                         className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold px-6 py-2.5 rounded-xl text-sm shadow-md hover:shadow-lg transition-all transform hover:-translate-y-0.5"
                       >
-                        ＋ Create User
+                        Create User
                       </button>
                     </div>
                   </form>
@@ -438,14 +464,13 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                       <span className="text-emerald-600">{users.length} total</span>
                     </h3>
                     <p className="text-xs text-gray-400 italic">
-                      Credentials stored locally · Share offline with users
+                      Credentials stored in Supabase database · Share with users
                     </p>
                   </div>
 
                   {users.length === 0 ? (
                     <div className="flex items-center justify-center h-32 text-center text-gray-400">
                       <div>
-                        <p className="text-3xl mb-2">👤</p>
                         <p className="text-sm font-medium">No users created yet</p>
                         <p className="text-xs">Use the form above to add user credentials</p>
                       </div>
@@ -479,15 +504,15 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                                   </span>
                                   <button
                                     onClick={() => setRevealIndex(revealIndex === idx ? null : idx)}
-                                    className="text-gray-400 hover:text-emerald-600 transition-colors text-base"
+                                    className="text-gray-400 hover:text-emerald-600 transition-colors text-xs font-semibold"
                                     title={revealIndex === idx ? "Hide password" : "Show password"}
                                   >
-                                    {revealIndex === idx ? "🙈" : "👁️"}
+                                    {revealIndex === idx ? "Hide" : "Show"}
                                   </button>
                                 </div>
                               </td>
                               <td className="px-5 py-3 text-xs text-gray-400">
-                                {new Date(u.createdAt).toLocaleDateString("en-IN", {
+                                {new Date(u.created_at || u.createdAt || new Date()).toLocaleDateString("en-IN", {
                                   day: "2-digit", month: "short", year: "numeric",
                                 })}
                               </td>
@@ -510,10 +535,10 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                                 ) : (
                                   <button
                                     onClick={() => setDeleteConfirm(u.id)}
-                                    className="text-red-400 hover:text-red-600 transition-colors text-base"
+                                    className="text-red-400 hover:text-red-600 transition-colors text-xs font-semibold"
                                     title="Delete user"
                                   >
-                                    🗑️
+                                    Delete
                                   </button>
                                 )}
                               </td>
@@ -526,8 +551,8 @@ const GameSimulationAdminPanel = ({ onClose }) => {
                 </div>
 
                 <p className="text-xs text-center text-gray-400">
-                  ⚠️ Credentials are saved in the browser's local storage only and are not synced to any server.
-                  Share these credentials with users <strong>offline</strong>.
+                  Credentials are saved in the Supabase database.
+                  Share these credentials with users to allow them to log in.
                 </p>
               </div>
             )}

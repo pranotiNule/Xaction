@@ -77,8 +77,8 @@ const GameSimulation = () => {
         type: "game",
       })
     );
-    // Navigate to login page with game simulation identifier
-    navigate(`/login?simulation=${simulation.id}`);
+    // Navigate to dedicated game login page
+    navigate("/game-login");
   };
 
   return (

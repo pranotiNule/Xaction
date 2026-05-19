@@ -14,14 +14,14 @@ const GameDistributionIntro = () => {
         const completed = await checkIfGameCompleted(userId);
         if (completed) {
           setAlreadyPlayed(true);
-          alert("You have already completed this simulation. Each user is allowed only one attempt.");
-          navigate("/game-simulation");
+          setIsChecking(false);
+          return; // Stop here, don't navigate automatically
         }
       }
       setIsChecking(false);
     };
     checkStatus();
-  }, [navigate]);
+  }, []);
 
   const handleBack = () => {
     navigate("/game-simulation");
@@ -44,6 +44,41 @@ const GameDistributionIntro = () => {
         <div className="text-emerald-600 font-bold text-xl animate-pulse text-center">
           <div className="w-16 h-16 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           Verifying Simulation Access...
+        </div>
+      </div>
+    );
+  }
+
+  if (alreadyPlayed) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden">
+        {/* Modal Overlay */}
+        <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm z-10"></div>
+        
+        {/* Modal Content */}
+        <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden z-20 transform transition-all translate-y-0 scale-100 animate-fade-in-up">
+          <div className="bg-red-600 px-6 py-4 flex items-center justify-center">
+            <svg className="w-8 h-8 text-white mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <h1 className="text-xl font-bold text-white tracking-wide">
+              Access Denied
+            </h1>
+          </div>
+          
+          <div className="p-8 text-center">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Simulation Already Completed</h2>
+            <p className="text-gray-600 mb-8 text-lg">
+              You have already successfully completed this simulation. Each participant is allowed only one attempt to ensure fairness.
+            </p>
+            
+            <button
+              onClick={() => navigate("/game-simulation")}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"
+            >
+              Return to Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
