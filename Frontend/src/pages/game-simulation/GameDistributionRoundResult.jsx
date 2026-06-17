@@ -51,8 +51,8 @@ const GameDistributionRoundResult = () => {
   // Distributor Margin % (given by admin)
   const distributorMarginPercent = 8;
 
-  // Total Coverage (given by admin)
-  const totalCoverage = 1050;
+  // Total Manpower (given by admin)
+  const totalManpower = 6;
 
   // Delivery & Warehouse Cost (given by admin)
   const deliveryWarehouseCost = 100000;
@@ -126,80 +126,97 @@ const GameDistributionRoundResult = () => {
   const totalClosingQty    = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
   const totalClosingValue  = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
 
-  // Distributor Rupee Gross Margin = Sales - Sales/(1 + Distributor Margin%)
+  // Distributor Rupee Gross Margin = Total Sales - (Total Sales / (1 + Distributor Margin%))
   const distributorRupeeGrossMargin = totalSales - totalSales / (1 + distributorMarginPercent / 100);
 
-  // Net Distributor Rupee Gross Margin = DRGM - [DRGM × (Early Discount %) × (1 - Credit Days/30)]
-  const netDistributorGrossMarginDeduction =
-    distributorRupeeGrossMargin * (earlyPaymentDiscount / 100) * (1 - creditDays / 30);
-  const netDistributorRupeeGrossMargin = distributorRupeeGrossMargin - netDistributorGrossMarginDeduction;
+  // Net Distributor Rupee Gross Margin = Distributor Gross Margin × (1 - Early Payment Discount%)
+  // Formula from Excel: Distributor Gross Margin x (1-Early Payment Discount)
+  const netDistributorRupeeGrossMargin =
+    distributorRupeeGrossMargin * (1 - earlyPaymentDiscount / 100);
 
-  // Retailer Outstanding = Credit Days × Sales / 30
-  const retailerOutstanding = creditDays * totalSales / 30;
+  // Retailer Outstanding = Total Sales × (Credit Days / 30)
+  const retailerOutstanding = (creditDays / 30) * totalSales;
 
-  // Net Payment Received = Sales - Retailer Outstanding
+  // Net Payment Received (Net Cash Received) = Total Sales - Retailer Outstanding
   const netPaymentReceived = totalSales - retailerOutstanding;
 
   // Total Inventory (units purchased by user)
   const totalInventoryUnits =
     inventory.milk.qty + inventory.dark.qty + inventory.wafer.qty + inventory.gift.qty;
 
-  // Inventory for ROI = actual amount invested from working capital (₹50,00,000 - current cash)
+  // Working capital / cash tracking
   const openingWorkingCapital = 5000000;
   const currentCash = parseInt(localStorage.getItem("gameDistributionCash") || `${openingWorkingCapital}`, 10);
-  const inventoryInvestment = Math.max(0, openingWorkingCapital - currentCash);
 
-  // Total Trade Scheme Spend = Sales - Sales / (1 + Scheme%)
-  // Based on Scheme Push Intensity: High = 1%, Low = 2%, Medium = 3%
-  let schemePushPercent = 0;
-  if (schemePushIntensity === 2) schemePushPercent = 1; // High
-  else if (schemePushIntensity === 1) schemePushPercent = 3; // Medium
-  else schemePushPercent = 2; // Low
-
-  const totalTradeSchemeSpend = totalSales - totalSales / (1 + schemePushPercent / 100);
+  // Total Trade Scheme Spend = Total Sales × (Quantity Discount% + Retail Display Incentive%)
+  // Uses the trade scheme values chosen on the Trade Scheme screen
+  const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
 
   // New Outlets Opened
   const newOutletsOpened = newRetailerEffort === 0 ? 2 : newRetailerEffort === 1 ? 5 : 10;
 
-  // Total Manpower = Coverage / Retailer Visit per Salesperson
-  const totalManpower = retailersToVisit > 0
-    ? Math.round(totalCoverage / retailersToVisit)
-    : 0;
+  // Total Coverage = Total Manpower × Retailer Visit per Salesperson + New Outlets Opened
+  const totalCoverage = totalManpower * retailersToVisit + newOutletsOpened;
 
   // Manpower Cost = 20,000 × Total Manpower
   const manpowerCost = totalManpower * 20000;
 
-  // Distributor ROI = (Net DRGM - Manpower Cost - Delivery Cost) / (20,00,000 + Inventory Investment + Retailer Outstanding) × 100
-  const roiDenominator = 2000000 + inventoryInvestment + retailerOutstanding;
+  // Distributor ROI = [Distributor Net Margin - Manpower Cost - Delivery & Warehouse Cost]
+  //                   / (20,00,000 + Closing Stock Value + Retailer Outstanding) × 100
+  // Excel formula: [Distributor Net Margin - Manpower Cost - Delivery & Warehouse Cost]
+  //                /(20,00,000 + Closing Stock Value + Retailer Outstanding) × 100
+  const roiDenominator = 2000000 + totalClosingValue + retailerOutstanding;
   const distributorROI = roiDenominator > 0
     ? ((netDistributorRupeeGrossMargin - manpowerCost - deliveryWarehouseCost) / roiDenominator) * 100
     : 0;
 
   // --- Retailer Satisfaction (weighted scoring) ---
+  // Excel formula sheet criteria (weights sum = 1.0, max score = 3.0):
+  // Payment Enforcement: 20% weight, L=3 M=2 H=1
+  // Scheme Push: 30% weight, L=3 M=2 H=1
+  // Order Fulfilment Rate: 30% weight, <85%=1, 85-90%=2, >90%=3
+  // Delivery Frequency to Retailers: 20% weight, <=10=1, >10 & <=20=2, >20=3
 
-  // Scheme Push: Medium=3, Low=2, High=1 -> weight 0.1
-  const schemePushPoint = schemePushIntensity === 1 ? 3 : schemePushIntensity === 0 ? 2 : 1;
-  const schemePushScore = schemePushPoint * 0.1;
+  // 1. Payment Enforcement (credit days → how lenient payment terms are)
+  //    High credit days = low enforcement = better for retailer (score 3)
+  //    creditDays > 30 → L enforcement → score 3
+  //    creditDays 20-30 → M enforcement → score 2
+  //    creditDays < 20 → H enforcement → score 1
+  const paymentEnforcementPoint = creditDays > 30 ? 3 : creditDays >= 20 ? 2 : 1;
+  const paymentEnforcementScore = paymentEnforcementPoint * 0.2;
 
-  // Order Fulfillment: >90%→3, 80-90%→2, <80%→1 → weight 0.3
-  const orderFulfilmentPoint = orderFulfilment > 90 ? 3 : orderFulfilment >= 80 ? 2 : 1;
+  // 2. Scheme Push: Low=3, Medium=2, High=1 → weight 0.3
+  //    schemePushIntensity: 0=Low, 1=Medium, 2=High
+  const schemePushPoint = schemePushIntensity === 0 ? 3 : schemePushIntensity === 1 ? 2 : 1;
+  const schemePushScore = schemePushPoint * 0.3;
+
+  // 3. Order Fulfilment Rate: <85%=1, 85–90%=2, >90%=3 → weight 0.3
+  const orderFulfilmentPoint = orderFulfilment > 90 ? 3 : orderFulfilment >= 85 ? 2 : 1;
   const orderFulfilmentScore = orderFulfilmentPoint * 0.3;
 
-  // Credit Days: >30→3, 20-30→2, <20→1 → weight 0.5
-  const creditDaysPoint = creditDays > 30 ? 3 : creditDays >= 20 ? 2 : 1;
-  const creditDaysScore = creditDaysPoint * 0.5;
+  // 4. Delivery Frequency to Retailers (retailersToVisit per salesperson)
+  //    <7=3, 7-10=2, >10=1 → weight 0.2
+  const deliveryFrequencyPoint = retailersToVisit < 7 ? 3 : retailersToVisit <= 10 ? 2 : 1;
+  const deliveryFrequencyScore = deliveryFrequencyPoint * 0.2;
 
-  // Credit Limit: >30000→3, 10000-30000→2, <10000→1 → weight 0.1
-  const creditLimitPoint = maxCreditLimit > 30000 ? 3 : maxCreditLimit >= 10000 ? 2 : 1;
-  const creditLimitScore = creditLimitPoint * 0.1;
-
-  const totalSatisfactionScore = schemePushScore + orderFulfilmentScore + creditDaysScore + creditLimitScore;
+  const totalSatisfactionScore =
+    paymentEnforcementScore + schemePushScore + orderFulfilmentScore + deliveryFrequencyScore;
 
   const getRetailerSatisfaction = () => {
     if (totalSatisfactionScore > 2.5) return "High";
     if (totalSatisfactionScore >= 1.5) return "Medium";
     return "Low";
   };
+
+  // New Retailer Acquisition Effort = Total Manpower × (Low=10, Medium=20, High=30)
+  // Based on user's selection on Sales Team screen (newRetailerEffort: 0=Low, 1=Medium, 2=High)
+  const acquisitionMultiplier = newRetailerEffort === 0 ? 10 : newRetailerEffort === 1 ? 20 : 30;
+  const newRetailerAcquisitionEffort = totalManpower * acquisitionMultiplier;
+
+  // Cost to Serve Per Outlet = (Manpower Cost + Delivery & Warehouse Cost) / Total Coverage
+  const costToServePerOutlet = totalCoverage > 0
+    ? (manpowerCost + deliveryWarehouseCost) / totalCoverage
+    : 0;
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -416,6 +433,8 @@ const GameDistributionRoundResult = () => {
                 { label: "Total Manpower", value: `${totalManpower}` },
                 { label: "Manpower Cost", value: formatCurrency(manpowerCost) },
                 { label: "Delivery & Warehouse Cost", value: formatCurrency(deliveryWarehouseCost) },
+                { label: "New Retailer Acquisition Effort", value: `${newRetailerAcquisitionEffort}` },
+                { label: "Cost to Serve Per Outlet", value: formatCurrency(Math.round(costToServePerOutlet)) },
               ].map(item => (
                 <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
                   <span className="text-gray-700 font-medium">{item.label}</span>
@@ -448,7 +467,7 @@ const GameDistributionRoundResult = () => {
                   {getRetailerSatisfaction()}
                 </p>
                 <p className="text-gray-500 text-xs mt-2 italic">
-                  Score: {totalSatisfactionScore.toFixed(1)} (Scheme: {schemePushScore.toFixed(1)} + Fulfilment: {orderFulfilmentScore.toFixed(1)} + Credit Days: {creditDaysScore.toFixed(1)} + Credit Limit: {creditLimitScore.toFixed(1)})
+                  Score: {totalSatisfactionScore.toFixed(1)} (Payment: {paymentEnforcementScore.toFixed(1)} + Scheme: {schemePushScore.toFixed(1)} + Fulfilment: {orderFulfilmentScore.toFixed(1)} + Delivery: {deliveryFrequencyScore.toFixed(1)})
                 </p>
               </div>
             </div>
