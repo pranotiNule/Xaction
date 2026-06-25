@@ -18,14 +18,14 @@ const GameDistributionRound2Intro = () => {
       milk: { qty: 0 }, dark: { qty: 0 }, wafer: { qty: 0 }, gift: { qty: 0 }
     };
   });
-  
+
   const openingStock = inventory.milk.qty + inventory.dark.qty + inventory.wafer.qty + inventory.gift.qty;
 
   // Opening Cash Balance
   const r1ClosingCash = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
-  
+
   // Cash in Hand = Opening Cash Balance + Payment Received (from R1) – Trade Scheme (from R1)
-  const cashInHand = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
+  const cashInHand = r1ClosingCash + r1NetPaymentReceived - r1TradeSchemeSpend;
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -36,13 +36,33 @@ const GameDistributionRound2Intro = () => {
   };
 
   const handleNext = () => {
+    // Save cashInHand synchronously so the Inventory page reads the correct value on mount
+    localStorage.setItem("gameDistributionCash", Math.round(cashInHand).toString());
+
+    // Reset Round 2 input screens to defaults
+    [
+      "gameDistributionQuantityDiscount",
+      "gameDistributionRetailDisplay",
+      "gameDistributionCreditDays",
+      "gameDistributionMaxCreditLimit",
+      "gameDistributionEarlyPaymentDiscount",
+      "gameDistributionEnforcementLevel",
+      "gameDistributionRetailersToVisit",
+      "gameDistributionNewRetailerEffort",
+      "gameDistributionSchemePushIntensity",
+      "gameDistributionOrderFulfilment",
+      "gameDistributionDeliveryFrequency",
+      "gameDistributionPriorityAllocation",
+      "gameDistributionStockBuffer",
+    ].forEach(key => localStorage.removeItem(key));
+
     navigate('/game-distribution/round2-inventory');
   };
 
   return (
     <div className="min-h-screen bg-emerald-50 flex items-center justify-center p-4 font-sans">
       <div className="w-full max-w-4xl bg-yellow-100 rounded-3xl shadow-2xl overflow-hidden border-8 border-yellow-200">
-        
+
         {/* Header Strip */}
         <div className="bg-emerald-700 text-emerald-50 px-6 py-3 flex justify-between items-center text-sm font-bold tracking-widest uppercase border-b-4 border-emerald-800">
           <span>Game Simulation</span>
@@ -65,9 +85,9 @@ const GameDistributionRound2Intro = () => {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
-                { 
-                  label: "Opening Stock (R2 Inventory)", 
-                  value: `Milk: ${inventory.milk.qty} | Dark: ${inventory.dark.qty} | Wafer: ${inventory.wafer.qty} | Gift: ${inventory.gift.qty}` 
+                {
+                  label: "Opening Stock (R2 Inventory)",
+                  value: `Milk: ${inventory.milk.qty} | Dark: ${inventory.dark.qty} | Wafer: ${inventory.wafer.qty} | Gift: ${inventory.gift.qty}`
                 },
                 { label: "Last Round Sale (R1)", value: formatCurrency(r1TotalSales) },
                 { label: "Retailer Outstanding (R1)", value: formatCurrency(r1RetailerOutstanding) },
@@ -75,7 +95,7 @@ const GameDistributionRound2Intro = () => {
                 { label: "Cash in Hand", value: formatCurrency(cashInHand) },
               ].map((item, idx) => (
                 <div key={idx} className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 flex flex-col justify-center">
-                  <span className="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">{item.label}</span>
+                  <span className="text-lg text-gray-500 font-bold tracking-wider mb-1">{item.label}</span>
                   <span className="text-xl font-black text-emerald-800">{item.value}</span>
                 </div>
               ))}
@@ -99,7 +119,7 @@ const GameDistributionRound2Intro = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Key Situation */}
             <div className="bg-amber-50 rounded-xl border-2 border-amber-200 p-6 flex flex-col">
               <h2 className="text-xl font-bold text-amber-800 mb-4 border-b-2 border-amber-200 pb-2">Key Situation</h2>
@@ -125,7 +145,7 @@ const GameDistributionRound2Intro = () => {
               <p className="text-gray-700 font-medium mb-3">Retailers are open to early payment if incentivized:</p>
               <div className="bg-white p-3 rounded-lg border border-emerald-100 flex items-center justify-center">
                 <p className="text-center font-bold text-gray-800">
-                  Total 1% Cash Discount offered,<br/>
+                  Total 1% Cash Discount offered,<br />
                   <span className="text-emerald-700">→ Credit Days reduce by 5 days</span>
                 </p>
               </div>
@@ -162,7 +182,7 @@ const GameDistributionRound2Intro = () => {
                 </li>
               </ul>
             </div>
-            
+
           </div>
 
           {/* What's at Stake */}
@@ -178,7 +198,7 @@ const GameDistributionRound2Intro = () => {
 
           {/* Action Row */}
           <div className="mt-12 flex justify-center items-center">
-            <button 
+            <button
               onClick={handleNext}
               className="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-16 rounded-xl shadow-[0_6px_0_rgb(21,128,61)] hover:shadow-[0_3px_0_rgb(21,128,61)] hover:translate-y-[3px] active:shadow-none active:translate-y-[6px] transition-all text-2xl transform hover:scale-105"
             >

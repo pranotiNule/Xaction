@@ -27,6 +27,7 @@ const GameDistributionRoundResult = () => {
   const creditDays = parseInt(localStorage.getItem("gameDistributionCreditDays") || "0", 10);
   const maxCreditLimit = parseInt(localStorage.getItem("gameDistributionMaxCreditLimit") || "0", 10);
   const earlyPaymentDiscount = parseFloat(localStorage.getItem("gameDistributionEarlyPaymentDiscount") || "0");
+  const enforcementLevel = parseInt(localStorage.getItem("gameDistributionEnforcementLevel") || "0", 10);
 
   // Sales Team
   const retailersToVisit = parseInt(localStorage.getItem("gameDistributionRetailersToVisit") || "0", 10);
@@ -35,6 +36,7 @@ const GameDistributionRoundResult = () => {
 
   // Supply Discipline
   const orderFulfilment = parseInt(localStorage.getItem("gameDistributionOrderFulfilment") || "0", 10);
+  const deliveryFrequency = parseInt(localStorage.getItem("gameDistributionDeliveryFrequency") || "0", 10);
 
   // --- Round 1 Inputs (admin/config) ---
 
@@ -97,6 +99,7 @@ const GameDistributionRoundResult = () => {
     );
 
     // Purchase Unit Price = Value / Quantity (derived — e.g. ₹8,50,000 ÷ 20,000 = ₹42.5/unit)
+    // If no purchase this round, use 0 for R1 (base round — no previous round to fall back to)
     const purchaseUnitPrice = purchaseQty > 0
       ? Math.round(purchaseValue / purchaseQty)
       : 0;
@@ -152,8 +155,9 @@ const GameDistributionRoundResult = () => {
   // Uses the trade scheme values chosen on the Trade Scheme screen
   const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
 
-  // New Outlets Opened
-  const newOutletsOpened = newRetailerEffort === 0 ? 2 : newRetailerEffort === 1 ? 5 : 10;
+  // New Outlets Opened = Total Manpower × (Low=10, Medium=20, High=30)
+  const newOutletsMultiplier = newRetailerEffort === 0 ? 10 : newRetailerEffort === 1 ? 20 : 30;
+  const newOutletsOpened = totalManpower * newOutletsMultiplier;
 
   // Total Coverage = Total Manpower × Retailer Visit per Salesperson + New Outlets Opened
   const totalCoverage = totalManpower * retailersToVisit + newOutletsOpened;
@@ -177,12 +181,9 @@ const GameDistributionRoundResult = () => {
   // Order Fulfilment Rate: 30% weight, <85%=1, 85-90%=2, >90%=3
   // Delivery Frequency to Retailers: 20% weight, <=10=1, >10 & <=20=2, >20=3
 
-  // 1. Payment Enforcement (credit days → how lenient payment terms are)
-  //    High credit days = low enforcement = better for retailer (score 3)
-  //    creditDays > 30 → L enforcement → score 3
-  //    creditDays 20-30 → M enforcement → score 2
-  //    creditDays < 20 → H enforcement → score 1
-  const paymentEnforcementPoint = creditDays > 30 ? 3 : creditDays >= 20 ? 2 : 1;
+  // 1. Payment Enforcement (0=Low, 1=Medium, 2=High) -> L=3, M=2, H=1
+  // Low enforcement = better for retailer (score 3)
+  const paymentEnforcementPoint = enforcementLevel === 0 ? 3 : enforcementLevel === 1 ? 2 : 1;
   const paymentEnforcementScore = paymentEnforcementPoint * 0.2;
 
   // 2. Scheme Push: Low=3, Medium=2, High=1 → weight 0.3
@@ -194,13 +195,14 @@ const GameDistributionRoundResult = () => {
   const orderFulfilmentPoint = orderFulfilment > 90 ? 3 : orderFulfilment >= 85 ? 2 : 1;
   const orderFulfilmentScore = orderFulfilmentPoint * 0.3;
 
-  // 4. Delivery Frequency to Retailers (retailersToVisit per salesperson)
+  // 4. Delivery Frequency to Retailers
   //    <7=3, 7-10=2, >10=1 → weight 0.2
-  const deliveryFrequencyPoint = retailersToVisit < 7 ? 3 : retailersToVisit <= 10 ? 2 : 1;
+  const deliveryFrequencyPoint = deliveryFrequency < 7 ? 3 : deliveryFrequency <= 10 ? 2 : 1;
   const deliveryFrequencyScore = deliveryFrequencyPoint * 0.2;
 
-  const totalSatisfactionScore =
-    paymentEnforcementScore + schemePushScore + orderFulfilmentScore + deliveryFrequencyScore;
+  const totalSatisfactionScore = Number(
+    (paymentEnforcementScore + schemePushScore + orderFulfilmentScore + deliveryFrequencyScore).toFixed(2)
+  );
 
   const getRetailerSatisfaction = () => {
     if (totalSatisfactionScore > 2.5) return "High";
@@ -235,6 +237,12 @@ const GameDistributionRoundResult = () => {
     localStorage.setItem("gameDistributionR1NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR1DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR1RetailerSatisfaction", getRetailerSatisfaction());
+    // Save per-product unit prices so next rounds can use as fallback when no purchase is made
+    monthlyDataRows.forEach(r => {
+      if (r.purchaseUnitPrice > 0) {
+        localStorage.setItem(`gameDistributionR1UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
+      }
+    });
   }, [monthlySalesTableTotal, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
 
   const handleExit = () => {
@@ -345,7 +353,7 @@ const GameDistributionRoundResult = () => {
                         {formatCurrency(r.purchaseValue)}
                       </td>
                       <td className="px-3 py-2 text-blue-600">
-                        {r.purchaseQty > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}
+                        {r.purchaseUnitPrice > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}
                       </td>
                       {/* Sale */}
                       <td className="px-3 py-2 text-emerald-700 font-bold border-l-2 border-yellow-200">
@@ -408,7 +416,7 @@ const GameDistributionRoundResult = () => {
               {[
                 { label: "Distributor Margin", value: `${distributorMarginPercent}%` },
                 { label: "Distributor Rupee Gross Margin", value: formatCurrency(Math.round(distributorRupeeGrossMargin)) },
-                { label: "Net Distributor Rupee Gross Margin", value: formatCurrency(Math.round(netDistributorRupeeGrossMargin)) },
+                { label: "Distributor Net Margin", value: formatCurrency(Math.round(netDistributorRupeeGrossMargin)) },
                 { label: "Retailer Outstanding", value: formatCurrency(Math.round(retailerOutstanding)) },
                 { label: "Net Payment Received", value: formatCurrency(Math.round(netPaymentReceived)) },
                 { label: "Total Trade Scheme Spend", value: formatCurrency(Math.round(totalTradeSchemeSpend)) },
@@ -428,12 +436,11 @@ const GameDistributionRoundResult = () => {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
               {[
-                { label: "Total Coverage", value: `${totalCoverage} Retailers` },
-                { label: "New Outlets Opened", value: `${newOutletsOpened}` },
                 { label: "Total Manpower", value: `${totalManpower}` },
+                { label: "New Outlets Opened", value: `${newOutletsOpened}` },
+                { label: "Total Coverage", value: `${totalCoverage} Retailers` },
                 { label: "Manpower Cost", value: formatCurrency(manpowerCost) },
                 { label: "Delivery & Warehouse Cost", value: formatCurrency(deliveryWarehouseCost) },
-                { label: "New Retailer Acquisition Effort", value: `${newRetailerAcquisitionEffort}` },
                 { label: "Cost to Serve Per Outlet", value: formatCurrency(Math.round(costToServePerOutlet)) },
               ].map(item => (
                 <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
@@ -453,9 +460,6 @@ const GameDistributionRoundResult = () => {
                 <p className="text-5xl font-extrabold text-emerald-700">
                   {distributorROI.toFixed(2)}%
                 </p>
-                <p className="text-gray-500 text-xs mt-2 italic">
-                  (Net Gross Margin − Manpower − Delivery) / (₹20,00,000 + Inventory + Outstanding)
-                </p>
               </div>
 
               {/* Retailer Satisfaction */}
@@ -466,22 +470,12 @@ const GameDistributionRoundResult = () => {
                   }`}>
                   {getRetailerSatisfaction()}
                 </p>
-                <p className="text-gray-500 text-xs mt-2 italic">
-                  Score: {totalSatisfactionScore.toFixed(1)} (Payment: {paymentEnforcementScore.toFixed(1)} + Scheme: {schemePushScore.toFixed(1)} + Fulfilment: {orderFulfilmentScore.toFixed(1)} + Delivery: {deliveryFrequencyScore.toFixed(1)})
-                </p>
               </div>
             </div>
           </div>
 
           {/* Action Buttons Row */}
-          <div className="mt-10 flex justify-between items-center max-w-2xl mx-auto px-4">
-            <button
-              onClick={handleBack}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-10 rounded-xl shadow-[0_4px_0_rgb(75,85,99)] hover:shadow-[0_2px_0_rgb(75,85,99)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-xl"
-            >
-              [ Back ]
-            </button>
-
+          <div className="mt-10 flex justify-center items-center max-w-2xl mx-auto px-4">
             <button
               onClick={handleExit}
               className="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-12 rounded-xl shadow-[0_6px_0_rgb(21,128,61)] hover:shadow-[0_3px_0_rgb(21,128,61)] hover:translate-y-[3px] active:shadow-none active:translate-y-[6px] transition-all text-2xl transform scale-110 tracking-widest"

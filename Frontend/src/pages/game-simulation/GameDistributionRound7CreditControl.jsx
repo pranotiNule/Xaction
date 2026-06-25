@@ -4,27 +4,13 @@ import { useNavigate } from "react-router-dom";
 const GameDistributionRound7CreditControl = () => {
   const navigate = useNavigate();
 
-  const [creditDays, setCreditDays] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7CreditDays");
-    return saved !== null ? parseInt(saved, 10) : 15;
-  });
+  // Always start from 0 (fresh slate for each round visit)
+  const [creditDays, setCreditDays] = useState(0);
+  const [maxCreditLimit, setMaxCreditLimit] = useState(0);
+  const [creditEnforcement, setCreditEnforcement] = useState(0);
+  const [earlyPaymentDiscount, setEarlyPaymentDiscount] = useState(0);
 
-  const [maxCreditLimit, setMaxCreditLimit] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7MaxCreditLimit");
-    return saved !== null ? parseInt(saved, 10) : 50000;
-  });
-
-  const [creditEnforcement, setCreditEnforcement] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7CreditEnforcement");
-    return saved !== null ? parseInt(saved, 10) : 1;
-  }); 
-
-  const [earlyPaymentDiscount, setEarlyPaymentDiscount] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7EarlyPaymentDiscount");
-    return saved !== null ? parseFloat(saved) : 0;
-  });
-
-  const enforcementLabels = ["Liberal", "Moderate", "Strict"];
+  const enforcementLabels = ["Low", "Medium", "High"];
 
   useEffect(() => {
     localStorage.setItem("gameDistributionR7CreditDays", creditDays.toString());
@@ -133,9 +119,34 @@ const GameDistributionRound7CreditControl = () => {
               </div>
             </div>
 
-            {/* Credit Enforcement */}
+            {/* Early Payment Discount */}
             <div className="w-full bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Credit Enforcement:</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Early Payment Discount:</h3>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => setEarlyPaymentDiscount(prev => Math.max(0, prev - 1))}
+                    className="bg-red-100 hover:bg-red-200 text-red-700 font-bold w-12 h-12 rounded-xl border-2 border-red-300 text-2xl transition-all active:translate-y-[2px]"
+                  >
+                    −
+                  </button>
+                  <span className="text-4xl font-extrabold text-emerald-700 min-w-[100px] text-center">
+                    {earlyPaymentDiscount}%
+                  </span>
+                  <button
+                    onClick={() => setEarlyPaymentDiscount(prev => prev + 1)}
+                    className="bg-green-100 hover:bg-green-200 text-green-700 font-bold w-12 h-12 rounded-xl border-2 border-green-300 text-2xl transition-all active:translate-y-[2px]"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="text-gray-600 font-bold text-right text-lg">Discount for Payment within 7 Days</p>
+              </div>
+            </div>
+
+            {/* Strict Payment Enforcement */}
+            <div className="w-full bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200 shadow-sm">
+              <h3 className="text-xl font-bold text-gray-800 mb-3">Strict Payment Enforcement:</h3>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <button
@@ -170,31 +181,6 @@ const GameDistributionRound7CreditControl = () => {
                     {label}
                   </span>
                 ))}
-              </div>
-            </div>
-
-            {/* Early Payment Discount */}
-            <div className="w-full bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-800 mb-3">Early Payment Discount:</h3>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={() => setEarlyPaymentDiscount(prev => Math.max(0, prev - 0.5))}
-                    className="bg-red-100 hover:bg-red-200 text-red-700 font-bold w-12 h-12 rounded-xl border-2 border-red-300 text-2xl transition-all active:translate-y-[2px]"
-                  >
-                    −
-                  </button>
-                  <span className="text-4xl font-extrabold text-emerald-700 min-w-[100px] text-center">
-                    {earlyPaymentDiscount}%
-                  </span>
-                  <button
-                    onClick={() => setEarlyPaymentDiscount(prev => Math.min(5, prev + 0.5))}
-                    className="bg-green-100 hover:bg-green-200 text-green-700 font-bold w-12 h-12 rounded-xl border-2 border-green-300 text-2xl transition-all active:translate-y-[2px]"
-                  >
-                    +
-                  </button>
-                </div>
-                <p className="text-gray-600 font-bold text-right text-lg">Discount Percent</p>
               </div>
             </div>
 

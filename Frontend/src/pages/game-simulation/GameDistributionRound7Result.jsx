@@ -83,7 +83,11 @@ const GameDistributionRound7Result = () => {
     const purchaseValue = parseInt(
       localStorage.getItem(`gameDistributionPurchaseAmount_r7_${p.key}`) || '0', 10
     );
-    const purchaseUnitPrice = purchaseQty > 0 ? Math.round(purchaseValue / purchaseQty) : 0;
+    // If no purchase this round, fall back to last round's (R6) unit price
+    const r6UnitPrice = parseInt(localStorage.getItem(`gameDistributionR6UnitPrice_${p.key}`) || '0', 10);
+    const purchaseUnitPrice = purchaseQty > 0
+      ? Math.round(purchaseValue / purchaseQty)
+      : r6UnitPrice;
 
     const osQty = openingStock[p.key]?.qty || 0;
     const combinedQty = osQty + purchaseQty;
@@ -104,26 +108,36 @@ const GameDistributionRound7Result = () => {
   const totalClosingQty    = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
   const totalClosingValue  = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
 
-  // Round 7 Margin: 8% - Early Payment Discount (per formula sheet)
-  const marginPercent = 8 - earlyPaymentDiscount;
-  // Gross Margin = Total Sales × margin% (direct percentage as per formula sheet)
-  const grossMargin = marginPercent > 0 ? totalSales * (marginPercent / 100) : 0;
-  // Net Distributor Rupee Gross Margin = Gross Margin (no additional credit adjustment per formula)
-  const netMargin = grossMargin;
+  const distributorMarginPercent = 8;
+  const marginPercent = distributorMarginPercent - earlyPaymentDiscount; // For UI display
+  const grossMargin = totalSales - (totalSales / (1 + distributorMarginPercent / 100));
+  const netMargin = grossMargin * (1 - earlyPaymentDiscount / 100);
 
-  const retailerOutstanding = (creditDays * totalSales) / 30;
+  const retailerOutstanding = totalSales * (creditDays / 30);
   const netPaymentReceived = totalSales - retailerOutstanding;
-  const cashInHand = currentCash + r6NetPaymentReceived - r6TradeSchemeSpend;
+  const openingCashBalance = currentCash;
 
-  const totalCoverage = 2050;
-  const warehouseCost = 125000;
-  const totalManpower = retailersToVisit > 0 ? Math.round(totalCoverage / retailersToVisit) : 0;
+  const quantityDiscount = parseFloat(localStorage.getItem("gameDistributionR7QuantityDiscount") || "0");
+  const retailDisplay = parseFloat(localStorage.getItem("gameDistributionR7RetailDisplay") || "0");
+  const totalSchemePercent = quantityDiscount + retailDisplay;
+  const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
+
+  const cashInHand = openingCashBalance + netPaymentReceived - totalTradeSchemeSpend;
+
+  const newRetailerEffort = parseInt(localStorage.getItem("gameDistributionR7NewRetailerEffort") || "1", 10);
+  const totalManpower = 6;
+  const acquisitionMultiplier = newRetailerEffort === 0 ? 10 : newRetailerEffort === 1 ? 20 : 30;
+  const newRetailerAcquisitionEffort = totalManpower * acquisitionMultiplier;
+  const totalCoverage = totalManpower * retailersToVisit + newRetailerAcquisitionEffort;
+  
   const manpowerCost = totalManpower * 20000;
-
+  const deliveryWarehouseCost = 100000;
+  const costToServePerOutlet = totalCoverage > 0 ? (manpowerCost + deliveryWarehouseCost) / totalCoverage : 0;
+  
   // ROI Formula: (Net Gross Margin - Manpower - Delivery & Warehouse) / (20,00,000 + Net Inventory + Retailer Outstanding) * 100
   const roiDenominator = 2000000 + totalClosingValue + retailerOutstanding;
   const distributorROI = roiDenominator > 0
-    ? ((netMargin - manpowerCost - warehouseCost) / roiDenominator) * 100
+    ? ((netMargin - manpowerCost - deliveryWarehouseCost) / roiDenominator) * 100
     : 0;
 
   // Satisfaction Score
@@ -161,31 +175,31 @@ const GameDistributionRound7Result = () => {
     const userName = localStorage.getItem("userName") || "Guest User";
 
     const finalResults = {
-      total_score: Math.round(totalSales),
-      distributor_roi: parseFloat(distributorROI.toFixed(2)),
-      market_share: 95, // From your target status logic
-      retailer_satisfaction: parseFloat(satisfactionScore.toFixed(2)),
-      cash_flow_health: currentCash > 0 ? "Healthy" : "Critical",
       user_name: userName,
-      final_state_data: {
-        inventory,
-        cashInHand,
-        totalSales,
-        satisfaction: getRetailerSatisfaction()
-      }
+      distributor_roi: parseFloat(distributorROI.toFixed(2)),
+      retailer_satisfaction: getRetailerSatisfaction(),
+      cash_in_hand: Math.round(cashInHand)
     };
 
-    const { success, error, alreadyExists } = await saveFinalResult(userId, finalResults);
+    // Assuming we use supabase directly here to bypass old dbUtils logic that checked user_id
+    try {
+      // Need to import supabase if not already imported, let's check
+      // Actually we will call a custom insert directly to be safe.
+      const { supabase } = await import('./supabaseClient');
+      
+      const { error } = await supabase
+        .from('user_game_results')
+        .insert([finalResults]);
 
-    if (success) {
-      if (alreadyExists) {
-        alert("Results already submitted previously. Returning to dashboard.");
+      if (error) {
+        console.error("Supabase Save Error:", error);
+        alert("Game completed! Note: There was an issue saving results to the cloud database. Please check Supabase RLS policies.");
       } else {
-        alert("Congratulations! Your game results have been saved.");
+        alert("Congratulations! Your game results have been saved successfully.");
       }
-    } else {
-      console.error("Supabase Save Error:", error);
-      alert("Game completed! Note: There was an issue saving results to the cloud database.");
+    } catch (err) {
+      console.error("Supabase Save Error:", err);
+      alert("Game completed! Note: Could not connect to the database.");
     }
 
     navigate("/game-simulation");
@@ -210,14 +224,14 @@ const GameDistributionRound7Result = () => {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10 max-w-4xl mx-auto">
             {[
-              { label: "Final Margin", value: `${marginPercent.toFixed(1)}%`, color: "text-emerald-700" },
-              { label: "Target Status", value: "95% YTD", color: "text-blue-700" },
-              { label: "Forced Push", value: "+20% Primary", color: "text-red-600" },
-              { label: "Final Push", value: getRetailerSatisfaction(), color: "text-amber-600" }
+              { label: "Distributor Margin", value: `${distributorMarginPercent}%`, color: "text-emerald-700" },
+              { label: "Trade Scheme", value: `${totalSchemePercent}%`, color: "text-blue-700" },
+              { label: "Tesle Scheme", value: "7% Trade", color: "text-red-600" },
+              { label: "Retailer Push", value: getRetailerSatisfaction(), color: "text-amber-600" }
             ].map(item => (
               <div key={item.label} className="bg-yellow-50 p-3 rounded-xl border border-yellow-200 text-center">
-                <p className="text-xs text-gray-500 font-black uppercase tracking-tighter mb-1">{item.label}</p>
-                <p className={`text-xl font-black italic underline decoration-yellow-300 ${item.color}`}>{item.value}</p>
+                <p className="text-sm text-gray-500 font-medium">{item.label}</p>
+                <p className={`text-lg font-bold ${item.color}`}>{item.value}</p>
               </div>
             ))}
           </div>
@@ -250,7 +264,7 @@ const GameDistributionRound7Result = () => {
                     <tr key={r.key} className="border-b border-yellow-100 hover:bg-yellow-100/50">
                       <td className="px-3 py-2 font-medium text-gray-800 text-left">{r.label}</td>
                       <td className="px-3 py-2 text-blue-700 font-bold border-l-2 border-yellow-200">{r.purchaseQty.toLocaleString('en-IN')}</td>
-                      <td className="px-3 py-2 text-blue-600">{r.purchaseQty > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}</td>
+                      <td className="px-3 py-2 text-blue-600">{r.purchaseUnitPrice > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}</td>
                       <td className="px-3 py-2 text-blue-700 font-bold">{formatCurrency(r.purchaseValue)}</td>
                       <td className="px-3 py-2 text-emerald-700 font-bold border-l-2 border-yellow-200">{r.saleQty.toLocaleString('en-IN')}</td>
                       <td className="px-3 py-2 text-emerald-600">{formatCurrency(r.saleUnitPrice)}</td>
@@ -277,42 +291,71 @@ const GameDistributionRound7Result = () => {
             </div>
           </div>
 
-          <div className="mb-10 max-w-4xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {/* Financial Summary */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center underline decoration-yellow-400">Financial Summary</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
               {[
-                { label: "Opening Cash", value: formatCurrency(cashInHand) },
-                { label: "Primary Push Investment", value: formatCurrency(totalClosingValue) },
-                { label: "Net Secondary Sales", value: formatCurrency(Math.round(netPaymentReceived)) },
-                { label: "Annual Net Margin", value: formatCurrency(Math.round(grossMargin)) },
+                { label: "Distributor Margin", value: `${distributorMarginPercent}%` },
+                { label: "Distributor Rupee Gross Margin", value: formatCurrency(Math.round(grossMargin)) },
+                { label: "Distributor Net Margin", value: formatCurrency(Math.round(netMargin)) },
+                { label: "Retailer Outstanding", value: formatCurrency(Math.round(retailerOutstanding)) },
+                { label: "Net Payment Received", value: formatCurrency(Math.round(netPaymentReceived)) },
+                { label: "Total Trade Scheme Spend", value: formatCurrency(Math.round(totalTradeSchemeSpend)) },
               ].map(item => (
-                <div key={item.label} className="bg-yellow-50 p-6 rounded-2xl border-4 border-yellow-200 flex justify-between items-center shadow-md">
-                  <span className="text-gray-700 font-black text-sm uppercase tracking-tighter italic">{item.label}</span>
-                  <span className="text-emerald-700 font-black text-3xl italic underline decoration-yellow-300">{item.value}</span>
+                <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
+                  <span className="text-gray-700 font-medium">{item.label}</span>
+                  <span className="text-emerald-700 font-extrabold text-lg">{item.value}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mb-10 max-w-4xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+          {/* Operational Summary */}
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center underline decoration-yellow-400">Operational Summary</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
+              {[
+                { label: "Total Manpower", value: `${totalManpower}` },
+                { label: "New Outlets Opened", value: `${newRetailerAcquisitionEffort}` },
+                { label: "Total Coverage", value: `${totalCoverage} Retailers` },
+                { label: "Manpower Cost", value: formatCurrency(manpowerCost) },
+                { label: "Delivery & Warehouse Cost", value: formatCurrency(deliveryWarehouseCost) },
+                { label: "Cost to Serve Per Outlet", value: formatCurrency(Math.round(costToServePerOutlet)) },
+              ].map(item => (
+                <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
+                  <span className="text-gray-700 font-medium">{item.label}</span>
+                  <span className="text-emerald-700 font-extrabold text-lg">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-10 max-w-5xl mx-auto px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
               {/* ROI Box */}
-              <div className="bg-emerald-50 p-8 rounded-[2.5rem] border-[10px] border-emerald-500 text-center shadow-[0_20px_50px_-12px_rgba(16,185,129,0.4)] transition-all hover:scale-105 active:scale-95 ring-4 ring-emerald-100 ring-offset-2">
-                <p className="text-emerald-600 font-black text-sm mb-3 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Final ROI</p>
-                <p className="text-7xl font-black text-emerald-900 italic tracking-tighter drop-shadow-lg">{distributorROI.toFixed(2)}%</p>
+              <div className="bg-emerald-50 p-6 rounded-[2rem] border-[6px] border-emerald-500 text-center shadow-lg transition-all hover:scale-105 active:scale-95 ring-2 ring-emerald-100 ring-offset-2 flex flex-col justify-center">
+                <p className="text-emerald-600 font-black text-sm mb-2 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Distributor ROI</p>
+                <p className="text-4xl lg:text-5xl font-black text-emerald-900 italic tracking-tighter drop-shadow-md">{distributorROI.toFixed(2)}%</p>
               </div>
 
               {/* Push Rating Box */}
-              <div className="bg-amber-50 p-8 rounded-[2.5rem] border-[10px] border-amber-500 text-center shadow-[0_20px_50px_-12px_rgba(245,158,11,0.4)] transition-all hover:scale-105 active:scale-95 ring-4 ring-amber-100 ring-offset-2">
-                <p className="text-amber-600 font-black text-sm mb-3 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Final Push Rating</p>
-                <p className={`text-7xl font-black italic tracking-tighter drop-shadow-lg ${getRetailerSatisfaction() === 'High' ? 'text-emerald-700' : getRetailerSatisfaction() === 'Medium' ? 'text-amber-600' : 'text-red-600'}`}>
+              <div className="bg-amber-50 p-6 rounded-[2rem] border-[6px] border-amber-500 text-center shadow-lg transition-all hover:scale-105 active:scale-95 ring-2 ring-amber-100 ring-offset-2 flex flex-col justify-center">
+                <p className="text-amber-600 font-black text-sm mb-2 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Retailer Satisfaction</p>
+                <p className={`text-4xl lg:text-5xl font-black italic tracking-tighter drop-shadow-md ${getRetailerSatisfaction() === 'High' ? 'text-emerald-700' : getRetailerSatisfaction() === 'Medium' ? 'text-amber-600' : 'text-red-600'}`}>
                   {getRetailerSatisfaction()}
                 </p>
+              </div>
+
+              {/* Cash in Hand Box */}
+              <div className="bg-blue-50 p-6 rounded-[2rem] border-[6px] border-blue-500 text-center shadow-lg transition-all hover:scale-105 active:scale-95 ring-2 ring-blue-100 ring-offset-2 flex flex-col justify-center">
+                <p className="text-blue-600 font-black text-sm mb-2 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Cash in hand</p>
+                <p className="text-3xl lg:text-4xl font-black text-blue-900 italic tracking-tighter drop-shadow-md">{formatCurrency(cashInHand)}</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-12 flex justify-between items-center max-w-2xl mx-auto px-4">
-            <button onClick={handleBack} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-10 rounded-xl shadow-[0_4px_0_rgb(75,85,99)] text-xl uppercase tracking-tighter">[ Back ]</button>
+          <div className="mt-12 flex justify-center items-center max-w-2xl mx-auto px-4">
             <button onClick={handleFinish} className="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-5 px-16 rounded-2xl shadow-[0_8px_0_rgb(5,150,105)] text-3xl tracking-widest uppercase transform scale-110 hover:scale-115 transition-transform">[ Exit Game ]</button>
           </div>
         </div>

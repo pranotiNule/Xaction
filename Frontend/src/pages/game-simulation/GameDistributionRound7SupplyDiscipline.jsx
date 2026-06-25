@@ -5,23 +5,11 @@ const GameDistributionRound7SupplyDiscipline = () => {
   const navigate = useNavigate();
 
   // Round 7: Supply Discipline
-  const [orderFulfilmentRate, setOrderFulfilmentRate] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7OrderFulfilment");
-    return saved !== null ? parseInt(saved, 10) || 0 : 0;
-  });
-
-  const [deliveryFrequency, setDeliveryFrequency] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7DeliveryFrequency");
-    return saved !== null ? parseInt(saved, 10) : 7;
-  });
-
-  const [priorityAllocation, setPriorityAllocation] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7PriorityAllocation");
-    return saved !== null ? parseInt(saved, 10) : 2; 
-  }); 
-
-  // Mandatory static 20% stock buffer for Round 7
-  const stockBufferLevel = 20;
+  // Always start from 0 (fresh slate for each round visit)
+  const [orderFulfilmentRate, setOrderFulfilmentRate] = useState(0);
+  const [deliveryFrequency, setDeliveryFrequency] = useState(0);
+  const [priorityAllocation, setPriorityAllocation] = useState(0);
+  const [stockBufferLevel, setStockBufferLevel] = useState(0);
 
   const allocationLabels = ["Top Retailers", "High Volume Retailers", "All Retailers"];
 
@@ -30,7 +18,7 @@ const GameDistributionRound7SupplyDiscipline = () => {
     localStorage.setItem("gameDistributionR7DeliveryFrequency", deliveryFrequency.toString());
     localStorage.setItem("gameDistributionR7PriorityAllocation", priorityAllocation.toString());
     localStorage.setItem("gameDistributionR7StockBuffer", stockBufferLevel.toString());
-  }, [orderFulfilmentRate, deliveryFrequency, priorityAllocation]);
+  }, [orderFulfilmentRate, deliveryFrequency, priorityAllocation, stockBufferLevel]);
 
   const handleOK = () => {
     navigate("/game-distribution/round7-result");

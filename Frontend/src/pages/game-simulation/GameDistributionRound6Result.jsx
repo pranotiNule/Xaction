@@ -86,7 +86,11 @@ const GameDistributionRound6Result = () => {
     const purchaseValue = parseInt(
       localStorage.getItem(`gameDistributionPurchaseAmount_r6_${p.key}`) || '0', 10
     );
-    const purchaseUnitPrice = purchaseQty > 0 ? Math.round(purchaseValue / purchaseQty) : 0;
+    // If no purchase this round, fall back to last round's (R5) unit price
+    const r5UnitPrice = parseInt(localStorage.getItem(`gameDistributionR5UnitPrice_${p.key}`) || '0', 10);
+    const purchaseUnitPrice = purchaseQty > 0
+      ? Math.round(purchaseValue / purchaseQty)
+      : r5UnitPrice;
 
     const osQty = openingStock[p.key]?.qty || 0;
     const combinedQty = osQty + purchaseQty;
@@ -140,7 +144,7 @@ const GameDistributionRound6Result = () => {
   const newOutletsOpened = newRetailerEffort === 0 ? 2 : newRetailerEffort === 1 ? 5 : 10;
 
   // Total Coverage = Total Manpower × Retailer Visit + New Outlets Opened
-  const totalCoverage = totalManpower * retailersToVisit + newOutletsOpened;
+  const totalCoverage = totalManpower * retailersToVisit + newRetailerAcquisitionEffort;
 
   // Manpower Cost = 20,000 × Total Manpower
   const manpowerCost = totalManpower * 20000;
@@ -193,6 +197,12 @@ const GameDistributionRound6Result = () => {
     localStorage.setItem("gameDistributionR6NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR6DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR6RetailerSatisfaction", getRetailerSatisfaction());
+    // Save per-product effective unit prices so Round 7 can use as fallback
+    monthlyDataRows.forEach(r => {
+      if (r.purchaseUnitPrice > 0) {
+        localStorage.setItem(`gameDistributionR6UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
+      }
+    });
   }, [totalSales, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
 
   const handleProceed = () => {
@@ -215,10 +225,6 @@ const GameDistributionRound6Result = () => {
     localStorage.setItem("gameDistributionRound7Inventory", JSON.stringify(emptyInventory));
     localStorage.setItem("gameDistributionCurrentRound", "7");
     navigate("/game-distribution/round7-intro");
-  };
-
-  const handleBack = () => {
-    navigate("/game-distribution/round6-supply-discipline");
   };
 
   return (
@@ -276,7 +282,7 @@ const GameDistributionRound6Result = () => {
                     <tr key={r.key} className="border-b border-yellow-100 hover:bg-yellow-100/50">
                       <td className="px-3 py-2 font-medium text-gray-800 text-left">{r.label}</td>
                       <td className="px-3 py-2 text-blue-700 font-bold border-l-2 border-yellow-200">{r.purchaseQty.toLocaleString('en-IN')}</td>
-                      <td className="px-3 py-2 text-blue-600">{r.purchaseQty > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}</td>
+                      <td className="px-3 py-2 text-blue-600">{r.purchaseUnitPrice > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}</td>
                       <td className="px-3 py-2 text-blue-700 font-bold">{formatCurrency(r.purchaseValue)}</td>
                       <td className="px-3 py-2 text-emerald-700 font-bold border-l-2 border-yellow-200">{r.saleQty.toLocaleString('en-IN')}</td>
                       <td className="px-3 py-2 text-emerald-600">{formatCurrency(r.saleUnitPrice)}</td>
@@ -308,11 +314,11 @@ const GameDistributionRound6Result = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center underline decoration-yellow-400">Financial Summary</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
               {[
-                { label: "Cash in Hand (Opening)", value: formatCurrency(Math.round(cashInHand)) },
-                { label: "Net Payment Received", value: formatCurrency(Math.round(netPaymentReceived)) },
+                { label: "Distributor Margin", value: `${distributorMarginPercent}%` },
                 { label: "Distributor Rupee Gross Margin", value: formatCurrency(Math.round(grossMargin)) },
                 { label: "Distributor Net Margin", value: formatCurrency(Math.round(netMargin)) },
                 { label: "Retailer Outstanding", value: formatCurrency(Math.round(retailerOutstanding)) },
+                { label: "Net Payment Received", value: formatCurrency(Math.round(netPaymentReceived)) },
                 { label: "Total Trade Scheme Spend", value: formatCurrency(Math.round(totalTradeSchemeSpend)) },
               ].map(item => (
                 <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
@@ -328,12 +334,11 @@ const GameDistributionRound6Result = () => {
             <h2 className="text-2xl font-bold text-gray-800 mb-4 text-center underline decoration-yellow-400">Operational Summary</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
               {[
-                { label: "Total Coverage", value: `${totalCoverage} Retailers` },
-                { label: "New Outlets Opened", value: `${newOutletsOpened}` },
                 { label: "Total Manpower", value: `${totalManpower}` },
+                { label: "New Outlets Opened", value: `${newRetailerAcquisitionEffort}` },
+                { label: "Total Coverage", value: `${totalCoverage} Retailers` },
                 { label: "Manpower Cost", value: formatCurrency(manpowerCost) },
                 { label: "Delivery & Warehouse Cost", value: formatCurrency(deliveryWarehouseCost) },
-                { label: "New Retailer Acquisition Effort", value: `${newRetailerAcquisitionEffort}` },
                 { label: "Cost to Serve Per Outlet", value: formatCurrency(Math.round(costToServePerOutlet)) },
               ].map(item => (
                 <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
@@ -360,8 +365,7 @@ const GameDistributionRound6Result = () => {
             </div>
           </div>
 
-          <div className="mt-10 flex justify-between items-center max-w-2xl mx-auto px-4">
-            <button onClick={handleBack} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-10 rounded-xl shadow-[0_4px_0_rgb(75,85,99)] hover:shadow-[0_2px_0_rgb(75,85,99)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-xl">[ Back ]</button>
+          <div className="mt-10 flex justify-center items-center max-w-2xl mx-auto px-4">
             <button onClick={handleProceed} className="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-12 rounded-xl shadow-[0_6px_0_rgb(21,128,61)] hover:shadow-[0_3px_0_rgb(21,128,61)] hover:translate-y-[3px] active:shadow-none active:translate-y-[6px] transition-all text-2xl transform scale-110 tracking-widest">[ Proceed to Round 7 ]</button>
           </div>
         </div>

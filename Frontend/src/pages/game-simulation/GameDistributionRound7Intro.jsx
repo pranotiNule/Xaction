@@ -29,7 +29,9 @@ const GameDistributionRound7Intro = () => {
   
   const openingStockUnits = inventory.milk.qty + inventory.dark.qty + inventory.wafer.qty + inventory.gift.qty;
 
-  const cashInHand = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
+  const r6ClosingCash = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
+  const isInitialized = localStorage.getItem("gameDistributionR7CashInitialized");
+  const cashInHand = isInitialized ? r6ClosingCash : r6ClosingCash + r6NetPaymentReceived - r6TradeSchemeSpend;
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -38,6 +40,23 @@ const GameDistributionRound7Intro = () => {
   };
 
   const handleNext = () => {
+    // Reset Round 7 input screens to defaults
+    [
+      "gameDistributionR7QuantityDiscount",
+      "gameDistributionR7RetailDisplay",
+      "gameDistributionR7CreditDays",
+      "gameDistributionR7MaxCreditLimit",
+      "gameDistributionR7CreditEnforcement",
+      "gameDistributionR7EarlyPaymentDiscount",
+      "gameDistributionR7RetailersToVisit",
+      "gameDistributionR7NewRetailerEffort",
+      "gameDistributionR7SchemePushIntensity",
+      "gameDistributionR7OrderFulfilment",
+      "gameDistributionR7DeliveryFrequency",
+      "gameDistributionR7PriorityAllocation",
+      "gameDistributionR7StockBuffer",
+    ].forEach(key => localStorage.removeItem(key));
+
     navigate('/game-distribution/round7-inventory'); 
   };
 
@@ -63,7 +82,7 @@ const GameDistributionRound7Intro = () => {
 
           {/* Carried Forward Block */}
           <div className="bg-white border-4 border-emerald-300 rounded-xl p-6 shadow-sm">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-emerald-200 pb-2 flex items-center uppercase">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4 border-b-2 border-emerald-200 pb-2 flex items-center">
                Carried Forward & Forced Primary Push
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -72,13 +91,13 @@ const GameDistributionRound7Intro = () => {
                   label: "Opening Stock (R6 Base x 120%)", 
                   value: `Milk: ${inventory.milk.qty} | Dark: ${inventory.dark.qty} | Wafer: ${inventory.wafer.qty} | Gift: ${inventory.gift.qty}` 
                 },
-                { label: "Last Round Sale (Value)", value: formatCurrency(r6TotalSales) },
-                { label: "Retailer Outstanding", value: formatCurrency(r6RetailerOutstanding) },
-                { label: "Company Reimbursed Scheme", value: formatCurrency(r6TradeSchemeSpend) },
+                { label: "Last Round Sale (R6)", value: formatCurrency(r6TotalSales) },
+                { label: "Retailer Outstanding (R6)", value: formatCurrency(r6RetailerOutstanding) },
+                { label: "Trade Scheme to be Reimbursed by the Company", value: formatCurrency(r6TradeSchemeSpend) },
                 { label: "Opening Cash in Hand", value: formatCurrency(cashInHand) },
               ].map((item, idx) => (
                 <div key={idx} className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 flex flex-col justify-center">
-                  <span className="text-sm text-gray-600 font-bold uppercase mb-1">{item.label}</span>
+                  <span className="text-lg text-gray-500 font-bold tracking-wider mb-1">{item.label}</span>
                   <span className="text-xl font-bold text-emerald-800">{item.value}</span>
                 </div>
               ))}

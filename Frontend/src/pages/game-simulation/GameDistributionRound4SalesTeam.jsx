@@ -10,12 +10,8 @@ const GameDistributionRound4SalesTeam = () => {
     return saved !== null ? parseInt(saved, 10) : 210;
   });
 
-  // Round 4: 2 salesmen have left. (Assuming starting was 5 in R3)
-  const [salesTeamAvailable] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionSalesTeam");
-    const base = saved !== null ? parseInt(saved, 10) : 5;
-    return Math.max(0, base - 2);
-  });
+  // Round 4: 2 salesmen have left. (Remaining is 5)
+  const [salesTeamAvailable] = useState(5);
 
   const [retailersInTerritory] = useState(() => {
     const saved = localStorage.getItem("gameDistributionRetailersTerritory");

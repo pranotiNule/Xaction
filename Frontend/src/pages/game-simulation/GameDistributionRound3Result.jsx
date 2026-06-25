@@ -21,11 +21,11 @@ const GameDistributionRound3Result = () => {
   // Separate reads for Monthly Data table
   const openingStock = (() => {
     const saved = localStorage.getItem("gameDistributionR3OpeningStock");
-    return saved ? JSON.parse(saved) : { milk: {qty:0}, dark: {qty:0}, wafer: {qty:0}, gift: {qty:0} };
+    return saved ? JSON.parse(saved) : { milk: { qty: 0 }, dark: { qty: 0 }, wafer: { qty: 0 }, gift: { qty: 0 } };
   })();
   const purchasesOnly = (() => {
     const saved = localStorage.getItem("gameDistributionRound3Inventory");
-    return saved ? JSON.parse(saved) : { milk: {qty:0}, dark: {qty:0}, wafer: {qty:0}, gift: {qty:0} };
+    return saved ? JSON.parse(saved) : { milk: { qty: 0 }, dark: { qty: 0 }, wafer: { qty: 0 }, gift: { qty: 0 } };
   })();
 
   // --- Round 2 Data (from localStorage, saved at end of Round 2) ---
@@ -116,7 +116,11 @@ const GameDistributionRound3Result = () => {
       localStorage.getItem(`gameDistributionPurchaseAmount_r3_${p.key}`) || '0', 10
     );
     // Unit Price = Value / Quantity (derived)
-    const purchaseUnitPrice = purchaseQty > 0 ? Math.round(purchaseValue / purchaseQty) : 0;
+    // If no purchase this round, fall back to last round's (R2) unit price
+    const r2UnitPrice = parseInt(localStorage.getItem(`gameDistributionR2UnitPrice_${p.key}`) || '0', 10);
+    const purchaseUnitPrice = purchaseQty > 0
+      ? Math.round(purchaseValue / purchaseQty)
+      : r2UnitPrice;
 
     // Sale: salesPercent% × (Opening Stock + Purchase) — Image 2 formula
     const osQty = openingStock[p.key]?.qty || 0;
@@ -138,20 +142,20 @@ const GameDistributionRound3Result = () => {
     };
   });
 
-  const totalPurchaseQty   = monthlyDataRows.reduce((s, r) => s + r.purchaseQty, 0);
+  const totalPurchaseQty = monthlyDataRows.reduce((s, r) => s + r.purchaseQty, 0);
   const totalPurchaseValue = monthlyDataRows.reduce((s, r) => s + r.purchaseValue, 0);
-  const totalSaleQty       = monthlyDataRows.reduce((s, r) => s + r.saleQty, 0);
-  const totalSaleValue     = monthlyDataRows.reduce((s, r) => s + r.saleValue, 0);
-  const totalClosingQty    = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
-  const totalClosingValue  = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
+  const totalSaleQty = monthlyDataRows.reduce((s, r) => s + r.saleQty, 0);
+  const totalSaleValue = monthlyDataRows.reduce((s, r) => s + r.saleValue, 0);
+  const totalClosingQty = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
+  const totalClosingValue = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
 
-  // Distributor Rupee Gross Margin = Sales - Sales/(1 + DM%)
-  const distributorRupeeGrossMargin = distributorMarginPercent > 0
+  // Distributor Net Margin (same formula as previously called Rupee Gross Margin)
+  const distributorNetMargin = distributorMarginPercent > 0
     ? totalSales - totalSales / (1 + distributorMarginPercent / 100)
     : 0;
 
   // Net Distributor Rupee Gross Margin = Distributor Gross Margin × (1 − Early Payment Discount)
-  const netDistributorRupeeGrossMargin = distributorRupeeGrossMargin * (1 - earlyPaymentDiscount / 100);
+  const netDistributorRupeeGrossMargin = distributorNetMargin * (1 - earlyPaymentDiscount / 100);
 
   // Retailer Outstanding = Credit Days × Sales / 30
   const retailerOutstanding = creditDays * totalSales / 30;
@@ -171,20 +175,31 @@ const GameDistributionRound3Result = () => {
   // Total Trade Scheme Spend = Total Sales × (Quantity Discount + Retail Display Incentive)
   const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
 
-  // New Outlets Opened (Round 3: aggressive expansion)
-  const newOutletsOpened = newRetailerEffort === 0 ? 200 : newRetailerEffort === 1 ? 500 : 1000;
+  // New Outlets Opened = Total Manpower × (Low=40, Medium=70, High=100)
+  const newOutletsMultiplier = newRetailerEffort === 0 ? 40 : newRetailerEffort === 1 ? 70 : 100;
+  const newOutletsOpened = totalManpower * newOutletsMultiplier;
 
   // Total Coverage = Total Manpower × Retailer Visit per Salesperson + New Outlets Opened
   const totalCoverage = totalManpower * retailersToVisit + newOutletsOpened;
 
+  // Target Coverage = Round 2 Coverage + 10000
+  const r2RetailersToVisit = parseInt(localStorage.getItem("gameDistributionRetailersToVisit") || "0", 10);
+  const r2NewRetailerEffort = parseInt(localStorage.getItem("gameDistributionNewRetailerEffort") || "0", 10);
+  const r2NewOutletsMultiplier = r2NewRetailerEffort === 0 ? 10 : r2NewRetailerEffort === 1 ? 20 : 30;
+  const r2TotalCoverage = r2RetailersToVisit > 0 ? (totalManpower * r2RetailersToVisit) + (totalManpower * r2NewOutletsMultiplier) : 1020;
+  const targetCoverage = r2TotalCoverage + 1000;
+
+  // Target Achieved
+  const targetAchieved = targetCoverage > 0 ? (totalCoverage / targetCoverage) : 0;
+
   // Manpower Cost = 20,000 × Total Manpower
   const manpowerCost = totalManpower * 20000;
 
-  // Distributor ROI % = (Net Margin - Manpower Cost - Delivery & Warehouse Cost)
+  // Distributor ROI % = (Net Distributor Rupee Gross Margin - Manpower Cost - Delivery & Warehouse Cost - 20000)
   //                      / (20,00,000 + Closing Stock Value + Retailer Outstanding) × 100
   const roiDenominator = 2000000 + totalClosingValue + retailerOutstanding;
   const distributorROI = roiDenominator > 0
-    ? ((netDistributorRupeeGrossMargin - manpowerCost - deliveryWarehouseCost) / roiDenominator) * 100
+    ? ((netDistributorRupeeGrossMargin - manpowerCost - deliveryWarehouseCost - 20000) / roiDenominator) * 100
     : 0;
 
   // --- Retailer Satisfaction (weighted scoring per formula) ---
@@ -238,6 +253,12 @@ const GameDistributionRound3Result = () => {
     localStorage.setItem("gameDistributionR3NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR3DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR3RetailerSatisfaction", getRetailerSatisfaction());
+    // Save per-product effective unit prices so Round 4 can use as fallback
+    monthlyDataRows.forEach(r => {
+      if (r.purchaseUnitPrice > 0) {
+        localStorage.setItem(`gameDistributionR3UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
+      }
+    });
   }, [monthlySalesTableTotal, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
 
   const handleProceed = () => {
@@ -343,7 +364,7 @@ const GameDistributionRound3Result = () => {
                         {r.purchaseQty.toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-blue-600">
-                        {r.purchaseQty > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}
+                        {r.purchaseUnitPrice > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}
                       </td>
                       <td className="px-3 py-2 text-blue-700 font-bold">
                         {formatCurrency(r.purchaseValue)}
@@ -400,7 +421,7 @@ const GameDistributionRound3Result = () => {
               {[
                 { label: "Distributor Margin", value: `${distributorMarginPercent}%` },
                 { label: "Credit Days", value: `${creditDays} Days` },
-                { label: "Distributor Rupee Gross Margin", value: formatCurrency(Math.round(distributorRupeeGrossMargin)) },
+                { label: "Distributor Rupee Gross Margin", value: formatCurrency(Math.round(distributorNetMargin)) },
                 { label: "Net Distributor Rupee Gross Margin", value: formatCurrency(Math.round(netDistributorRupeeGrossMargin)) },
                 { label: "Retailer Outstanding", value: formatCurrency(Math.round(retailerOutstanding)) },
                 { label: "Net Payment Received", value: formatCurrency(Math.round(netPaymentReceived)) },
@@ -422,11 +443,12 @@ const GameDistributionRound3Result = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
               {[
                 { label: "Total Coverage", value: `${totalCoverage} Retailers` },
+                { label: "Target Coverage", value: `${targetCoverage} Retailers` },
+                { label: "Target Achieved", value: `${(targetAchieved * 100).toFixed(2)}%` },
                 { label: "New Outlets Opened", value: `${newOutletsOpened}` },
                 { label: "Total Manpower", value: `${totalManpower}` },
                 { label: "Manpower Cost", value: formatCurrency(manpowerCost) },
                 { label: "Delivery & Warehouse Cost", value: formatCurrency(deliveryWarehouseCost) },
-                { label: "New Retailer Acquisition Effort", value: `${newRetailerAcquisitionEffort}` },
                 { label: "Cost to Serve Per Outlet", value: formatCurrency(Math.round(costToServePerOutlet)) },
               ].map(item => (
                 <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
@@ -447,9 +469,6 @@ const GameDistributionRound3Result = () => {
                 <p className="text-5xl font-extrabold text-emerald-700">
                   {distributorROI.toFixed(2)}%
                 </p>
-                <p className="text-gray-500 text-xs mt-2 italic">
-
-                </p>
               </div>
 
               {/* Retailer Satisfaction */}
@@ -460,22 +479,12 @@ const GameDistributionRound3Result = () => {
                   }`}>
                   {getRetailerSatisfaction()}
                 </p>
-                <p className="text-gray-500 text-xs mt-2 italic">
-                  Score: {totalSatisfactionScore.toFixed(1)} (Payment: {paymentEnforcementScore.toFixed(1)} + Scheme: {schemePushScore.toFixed(1)} + Fulfilment: {orderFulfilmentScore.toFixed(1)} + Delivery: {deliveryFrequencyScore.toFixed(1)})
-                </p>
               </div>
             </div>
           </div>
 
           {/* Action Buttons Row */}
-          <div className="mt-10 flex justify-between items-center max-w-2xl mx-auto px-4">
-            <button
-              onClick={handleBack}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-10 rounded-xl shadow-[0_4px_0_rgb(75,85,99)] hover:shadow-[0_2px_0_rgb(75,85,99)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-xl"
-            >
-              [ Back ]
-            </button>
-
+          <div className="mt-10 flex justify-center items-center max-w-2xl mx-auto px-4">
             <button
               onClick={handleProceed}
               className="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-12 rounded-xl shadow-[0_6px_0_rgb(21,128,61)] hover:shadow-[0_3px_0_rgb(21,128,61)] hover:translate-y-[3px] active:shadow-none active:translate-y-[6px] transition-all text-2xl transform scale-110 tracking-widest"

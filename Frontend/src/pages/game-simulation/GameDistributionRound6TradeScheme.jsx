@@ -7,14 +7,9 @@ const GameDistributionRound6TradeScheme = () => {
   // Round 6: Company reimburses 5%. Anything above is from Distributor margin.
   const approvedScheme = 5; 
 
-  const [quantityDiscount, setQuantityDiscount] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR6QuantityDiscount");
-    return saved !== null ? parseInt(saved, 10) || 0 : 0;
-  });
-  const [retailDisplayIncentive, setRetailDisplayIncentive] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR6RetailDisplay");
-    return saved !== null ? parseInt(saved, 10) || 0 : 0;
-  });
+  // Always start from defaults (fresh slate for each round visit)
+  const [quantityDiscount, setQuantityDiscount] = useState(0);
+  const [retailDisplayIncentive, setRetailDisplayIncentive] = useState(0);
 
   const totalScheme = quantityDiscount + retailDisplayIncentive;
   
@@ -31,7 +26,8 @@ const GameDistributionRound6TradeScheme = () => {
   }, [quantityDiscount, retailDisplayIncentive, totalScheme]);
 
   const handleIncrement = (type) => {
-    // Capping removed as requested!
+    if (totalScheme >= 8) return;
+    
     if (type === "quantity") {
       setQuantityDiscount(prev => prev + 1);
     } else {

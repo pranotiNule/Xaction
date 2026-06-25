@@ -26,7 +26,9 @@ const GameDistributionRound4Intro = () => {
   // Opening Cash Balance (Status after R3 purchases)
   const r3ClosingCash = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
   
-  const cashInHand = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
+  // Cash in Hand = Opening Cash Balance + Payment Received (from R3) – Trade Scheme (from R3)
+  // Payment Received = Net Cash Received = R3 Net Payment Received (Total Sales − Retailer Outstanding)
+  const cashInHand = r3ClosingCash + r3NetPaymentReceived - r3TradeSchemeSpend;
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -37,7 +39,27 @@ const GameDistributionRound4Intro = () => {
   };
 
   const handleNext = () => {
-    navigate('/game-distribution/round4-inventory'); 
+    // Save cashInHand synchronously so the Inventory page reads the correct value on mount
+    localStorage.setItem("gameDistributionCash", Math.round(cashInHand).toString());
+
+    // Reset Round 4 input screens to defaults
+    [
+      "gameDistributionR4QuantityDiscount",
+      "gameDistributionR4RetailDisplay",
+      "gameDistributionR4CreditDays",
+      "gameDistributionR4MaxCreditLimit",
+      "gameDistributionR4EarlyPaymentDiscount",
+      "gameDistributionR4EnforcementLevel",
+      "gameDistributionR4RetailersToVisit",
+      "gameDistributionR4NewRetailerEffort",
+      "gameDistributionR4SchemePushIntensity",
+      "gameDistributionR4OrderFulfilment",
+      "gameDistributionR4DeliveryFrequency",
+      "gameDistributionR4PriorityAllocation",
+      "gameDistributionR4StockBuffer",
+    ].forEach(key => localStorage.removeItem(key));
+
+    navigate('/game-distribution/round4-inventory');
   };
 
   const handleBack = () => {
@@ -74,13 +96,13 @@ const GameDistributionRound4Intro = () => {
                   label: "Opening Stock (From Last Screen)", 
                   value: `Milk: ${inventory.milk.qty} | Dark: ${inventory.dark.qty} | Wafer: ${inventory.wafer.qty} | Gift: ${inventory.gift.qty}` 
                 },
-                { label: "Last Round Sale (Value)", value: formatCurrency(r3TotalSales) },
-                { label: "Retailer Outstanding (From Last Screen)", value: formatCurrency(r3RetailerOutstanding) },
-                { label: "Trade Scheme to be Reimbursed by the Company (Company has reimbursed previous round scheme)", value: formatCurrency(r3TradeSchemeSpend) },
+                { label: "Last Round Sale (R3)", value: formatCurrency(r3TotalSales) },
+                { label: "Retailer Outstanding (R3)", value: formatCurrency(r3RetailerOutstanding) },
+                { label: "Trade Scheme to be Reimbursed by the Company", value: formatCurrency(r3TradeSchemeSpend) },
                 { label: "Cash in Hand", value: formatCurrency(cashInHand) },
               ].map((item, idx) => (
                 <div key={idx} className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 flex flex-col justify-center">
-                  <span className="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">{item.label}</span>
+                  <span className="text-lg text-gray-500 font-bold tracking-wider mb-1">{item.label}</span>
                   <span className="text-xl font-black text-emerald-800">{item.value}</span>
                 </div>
               ))}

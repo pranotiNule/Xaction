@@ -10,10 +10,11 @@ const GameDistributionRound4TradeScheme = () => {
     return saved !== null ? parseInt(saved, 10) : 5000000;
   });
 
-  // The approved scheme % from Company
+  // The approved scheme % from Company (5% base + 4% additional)
   const [approvedScheme, setApprovedScheme] = useState(() => {
     const saved = localStorage.getItem("gameDistributionR4ApprovedScheme");
-    return saved !== null ? parseFloat(saved) : 4; // Default 4% for R4
+    // Upgrade existing local storage value from 4 to 9 if they are testing
+    return saved !== null && parseFloat(saved) !== 4 ? parseFloat(saved) : 9; 
   });
 
   const [quantityDiscount, setQuantityDiscount] = useState(() => {
@@ -92,7 +93,7 @@ const GameDistributionRound4TradeScheme = () => {
           <div className="text-center mb-6">
             <p className="text-lg text-gray-700 leading-relaxed max-w-2xl mx-auto">
               In this <span className="font-bold text-red-600">Manpower Shortage</span> phase, trade schemes can help maintain retailer loyalty even if visit frequency is slightly reduced.
-              The additional approved scheme from Company is <span className="font-bold text-emerald-700">{approvedScheme}%</span> for Round 4.
+              The additional approved scheme from Company is <span className="font-bold text-emerald-700">4%</span> (making the total limit <span className="font-bold text-emerald-700">{approvedScheme}%</span>) for Round 4.
             </p>
           </div>
 

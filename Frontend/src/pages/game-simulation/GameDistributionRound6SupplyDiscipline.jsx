@@ -5,25 +5,11 @@ const GameDistributionRound6SupplyDiscipline = () => {
   const navigate = useNavigate();
 
   // Round 6: Supply Discipline
-  const [orderFulfilmentRate, setOrderFulfilmentRate] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR6OrderFulfilment");
-    return saved !== null ? parseInt(saved, 10) || 0 : 0;
-  });
-
-  const [deliveryFrequency, setDeliveryFrequency] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR6DeliveryFrequency");
-    return saved !== null ? parseInt(saved, 10) : 7;
-  });
-
-  const [priorityAllocation, setPriorityAllocation] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR6PriorityAllocation");
-    return saved !== null ? parseInt(saved, 10) : 2; 
-  }); 
-
-  const [stockBufferLevel, setStockBufferLevel] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR6StockBuffer");
-    return saved !== null ? parseInt(saved, 10) || 0 : 0;
-  });
+  // Always start from 0 (fresh slate for each round visit)
+  const [orderFulfilmentRate, setOrderFulfilmentRate] = useState(0);
+  const [deliveryFrequency, setDeliveryFrequency] = useState(0);
+  const [priorityAllocation, setPriorityAllocation] = useState(0);
+  const [stockBufferLevel, setStockBufferLevel] = useState(0);
 
   const allocationLabels = ["Top Retailers", "High Volume Retailers", "All Retailers"];
 

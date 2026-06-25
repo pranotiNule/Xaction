@@ -7,8 +7,18 @@ const GameDistributionRound5Inventory = () => {
   
   // Uses remaining cash from Round 4 / R5 Intro calculation
   const [cash, setCash] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionCash");
-    return saved !== null ? parseInt(saved, 10) : 5000000;
+    let currentCash = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
+    const isInitialized = localStorage.getItem("gameDistributionR5CashInitialized");
+    
+    if (!isInitialized) {
+      const r4NetPaymentReceived = parseInt(localStorage.getItem("gameDistributionR4NetPaymentReceived") || "0", 10);
+      const r4TradeSchemeSpend = parseInt(localStorage.getItem("gameDistributionR4TradeSchemeSpend") || "0", 10);
+      currentCash = currentCash + r4NetPaymentReceived - r4TradeSchemeSpend;
+      localStorage.setItem("gameDistributionR5CashInitialized", "true");
+      localStorage.setItem("gameDistributionCash", currentCash.toString());
+    }
+    
+    return currentCash;
   });
 
   const [inventory, setInventory] = useState(() => {

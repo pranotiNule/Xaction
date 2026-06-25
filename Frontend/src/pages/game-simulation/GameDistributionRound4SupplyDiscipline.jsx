@@ -13,8 +13,8 @@ const GameDistributionRound4SupplyDiscipline = () => {
     return saved !== null ? parseInt(saved, 10) || 0 : 0;
   });
 
-  // FIXED formula: Coverage / 30
-  const deliveryFrequency = Math.round(totalCoverage / 30);
+  // User-adjustable Delivery Frequency — always starts from 0
+  const [deliveryFrequency, setDeliveryFrequency] = useState(0);
 
   const [priorityAllocation, setPriorityAllocation] = useState(() => {
     const saved = localStorage.getItem("gameDistributionR4PriorityAllocation");
@@ -79,7 +79,7 @@ const GameDistributionRound4SupplyDiscipline = () => {
 
           <div className="text-center mb-10">
             <p className="text-md text-gray-600 italic">
-              The frequency of supply is now strictly aligned with your market coverage.
+              Adjust your supply frequency and prioritization to ensure optimal delivery to retailers.
             </p>
           </div>
 
@@ -111,22 +111,29 @@ const GameDistributionRound4SupplyDiscipline = () => {
               </div>
             </div>
 
-            {/* Delivery Frequency to Retailers (FIXED) */}
+            {/* Delivery Frequency to Retailers */}
             <div className="w-full bg-yellow-50 p-6 rounded-2xl border-2 border-yellow-200 shadow-sm">
               <h3 className="text-xl font-bold text-gray-800 mb-3">Delivery Frequency to Retailers:</h3>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12"></div>
+                  <button
+                    onClick={() => setDeliveryFrequency(prev => Math.max(0, prev - 1))}
+                    className="bg-red-100 hover:bg-red-200 text-red-700 font-bold w-12 h-12 rounded-xl border-2 border-red-300 text-2xl transition-all active:translate-y-[2px]"
+                  >
+                    −
+                  </button>
                   <span className="text-4xl font-extrabold text-emerald-700 min-w-[100px] text-center">
                     {deliveryFrequency}
                   </span>
-                  <div className="w-12 h-12"></div>
+                  <button
+                    onClick={() => setDeliveryFrequency(prev => prev + 1)}
+                    className="bg-green-100 hover:bg-green-200 text-green-700 font-bold w-12 h-12 rounded-xl border-2 border-green-300 text-2xl transition-all active:translate-y-[2px]"
+                  >
+                    +
+                  </button>
                 </div>
                 <p className="text-gray-600 font-bold text-right text-lg">Days</p>
               </div>
-              <p className="text-blue-600 text-sm italic mt-2">
-                * Frequency is now automatically aligned: Coverage ({totalCoverage}) / 30 = {deliveryFrequency} days.
-              </p>
             </div>
 
             {/* Priority Supply Allocation */}

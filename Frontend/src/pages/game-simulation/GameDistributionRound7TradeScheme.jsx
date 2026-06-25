@@ -6,14 +6,9 @@ const GameDistributionRound7TradeScheme = () => {
 
   const approvedScheme = 5; 
 
-  const [quantityDiscount, setQuantityDiscount] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7QuantityDiscount");
-    return saved !== null ? parseInt(saved, 10) || 0 : 0;
-  });
-  const [retailDisplayIncentive, setRetailDisplayIncentive] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7RetailDisplay");
-    return saved !== null ? parseInt(saved, 10) || 0 : 0;
-  });
+  // Always start from defaults (fresh slate for each round visit)
+  const [quantityDiscount, setQuantityDiscount] = useState(0);
+  const [retailDisplayIncentive, setRetailDisplayIncentive] = useState(0);
 
   const totalScheme = quantityDiscount + retailDisplayIncentive;
   const remainingScheme = approvedScheme - totalScheme;

@@ -3,11 +3,20 @@ import { useNavigate } from "react-router-dom";
 
 const GameDistributionRound6Inventory = () => {
   const navigate = useNavigate();
-  
+
   // Uses remaining cash from Round 5 / R6 Intro calculation
   const [cash, setCash] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionCash");
-    return saved !== null ? parseInt(saved, 10) : 5000000;
+    let currentCash = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
+    const isInitialized = localStorage.getItem("gameDistributionR6CashInitialized");
+
+    if (!isInitialized) {
+      const r5NetPaymentReceived = parseInt(localStorage.getItem("gameDistributionR5NetPaymentReceived") || "0", 10);
+      const r5TradeSchemeSpend = parseInt(localStorage.getItem("gameDistributionR5TradeSchemeSpend") || "0", 10);
+      currentCash = currentCash + r5NetPaymentReceived - r5TradeSchemeSpend;
+      localStorage.setItem("gameDistributionR6CashInitialized", "true");
+      localStorage.setItem("gameDistributionCash", currentCash.toString());
+    }
+    return currentCash;
   });
 
   const [inventory, setInventory] = useState(() => {
@@ -79,29 +88,111 @@ const GameDistributionRound6Inventory = () => {
             </div>
           </div>
 
-          <div className="flex flex-col items-center max-w-3xl mx-auto space-y-6">
-            {Object.keys(inventory).map((key) => (
-              <div key={key} className="flex w-full items-center justify-between bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm">
-                <div className="flex-1">
-                  <span className="text-2xl font-bold text-gray-800">{inventory[key].qty} Units – {inventory[key].name}</span>
-                </div>
-                <button onClick={() => handleBuy(key)} className="bg-white hover:bg-gray-50 text-gray-800 font-bold py-3 px-6 rounded-xl border border-gray-300 shadow-[0_4px_0_rgb(209,213,219)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-lg min-w-[220px]">
-                  Buy {inventory[key].name.replace('Tedbury ', '')}
-                </button>
-              </div>
-            ))}
+          <div className="text-center mb-10">
+            <h2 className="text-3xl font-bold text-gray-800">
+              You have {formatCurrency(cash)} and:
+            </h2>
           </div>
 
+          {/* Flexible Grid for Items and Buttons */}
+          <div className="flex flex-col items-center max-w-3xl mx-auto space-y-6">
+            
+            {/* Milk Chocolate */}
+            <div className="flex w-full items-center justify-between bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex-1">
+                <span className="text-2xl font-bold text-gray-800">
+                  {inventory.milk.qty} Units – {inventory.milk.name}
+                </span>
+              </div>
+              <button 
+                onClick={() => handleBuy('milk')}
+                className="bg-white hover:bg-gray-50 text-gray-800 font-bold py-3 px-6 rounded-xl border border-gray-300 shadow-[0_4px_0_rgb(209,213,219)] hover:shadow-[0_2px_0_rgb(209,213,219)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-lg min-w-[220px] cursor-pointer"
+              >
+                Buy {inventory.milk.qty > 0 ? 'More ' : ''}Milk Chocolate
+              </button>
+            </div>
+
+            {/* Dark Chocolate */}
+            <div className="flex w-full items-center justify-between bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex-1">
+                <span className="text-2xl font-bold text-gray-800">
+                  {inventory.dark.qty} Units – {inventory.dark.name}
+                </span>
+              </div>
+              <button 
+                onClick={() => handleBuy('dark')}
+                className="bg-white hover:bg-gray-50 text-gray-800 font-bold py-3 px-6 rounded-xl border border-gray-300 shadow-[0_4px_0_rgb(209,213,219)] hover:shadow-[0_2px_0_rgb(209,213,219)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-lg min-w-[220px] cursor-pointer"
+              >
+                Buy {inventory.dark.qty > 0 ? 'More ' : ''}Dark Chocolate
+              </button>
+            </div>
+
+            {/* Wafer Chocolate */}
+            <div className="flex w-full items-center justify-between bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex-1">
+                <span className="text-2xl font-bold text-gray-800">
+                  {inventory.wafer.qty} Units – {inventory.wafer.name}
+                </span>
+              </div>
+              <button 
+                onClick={() => handleBuy('wafer')}
+                className="bg-white hover:bg-gray-50 text-gray-800 font-bold py-3 px-6 rounded-xl border border-gray-300 shadow-[0_4px_0_rgb(209,213,219)] hover:shadow-[0_2px_0_rgb(209,213,219)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-lg min-w-[220px] cursor-pointer"
+              >
+                Buy {inventory.wafer.qty > 0 ? 'More ' : ''}Wafer Chocolate
+              </button>
+            </div>
+
+            {/* Gift Packs */}
+            <div className="flex w-full items-center justify-between bg-yellow-50 p-4 rounded-lg border border-yellow-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex-1">
+                <span className="text-2xl font-bold text-gray-800">
+                  {inventory.gift.qty} Units – {inventory.gift.name}
+                </span>
+              </div>
+              <button 
+                onClick={() => handleBuy('gift')}
+                className="bg-white hover:bg-gray-50 text-gray-800 font-bold py-3 px-6 rounded-xl border border-gray-300 shadow-[0_4px_0_rgb(209,213,219)] hover:shadow-[0_2px_0_rgb(209,213,219)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-lg min-w-[220px] cursor-pointer"
+              >
+                Buy {inventory.gift.qty > 0 ? 'More ' : ''}Gift Packs
+              </button>
+            </div>
+
+          </div>
+
+          {/* Action Buttons Row */}
           <div className="mt-16 flex flex-wrap justify-between items-center gap-4 max-w-3xl mx-auto">
-            <button onClick={handleExit} className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-[0_4px_0_rgb(153,27,27)] text-xl">Exit Market</button>
-            <button onClick={handleOK} className="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-16 rounded-xl shadow-[0_6px_0_rgb(21,128,61)] text-4xl transform scale-110">OK</button>
-            <button onClick={handleBack} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-xl shadow-[0_4px_0_rgb(75,85,99)] text-xl">Back</button>
+            <button 
+              onClick={handleExit}
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded-xl shadow-[0_4px_0_rgb(153,27,27)] hover:shadow-[0_2px_0_rgb(153,27,27)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-xl"
+            >
+              Exit Market
+            </button>
+
+            <button 
+              onClick={handleOK}
+              className="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-16 rounded-xl shadow-[0_6px_0_rgb(21,128,61)] hover:shadow-[0_3px_0_rgb(21,128,61)] hover:translate-y-[3px] active:shadow-none active:translate-y-[6px] transition-all text-4xl transform scale-110"
+            >
+              OK
+            </button>
+
+            <button 
+              onClick={handleBack}
+              className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-xl shadow-[0_4px_0_rgb(75,85,99)] hover:shadow-[0_2px_0_rgb(75,85,99)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-xl"
+            >
+              Back
+            </button>
           </div>
         </div>
 
+        {/* Footer Info Strip */}
         <div className="bg-yellow-100 border-t-2 border-yellow-300 px-8 py-4 flex justify-between items-center text-lg font-bold text-gray-800 uppercase">
-          <span>Round: 6 of 7</span>
-          <span>Condition: Competition Heavy Scheme</span>
+          <div className="flex flex-col">
+            <span>Round: 6 of 7</span>
+            <span>Cash Available: {formatCurrency(cash)}</span>
+          </div>
+          <div className="flex flex-col text-right">
+            <span>Condition: Competition Heavy Scheme</span>
+          </div>
         </div>
       </div>
     </div>

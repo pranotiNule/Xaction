@@ -131,7 +131,7 @@ const GameDistributionIntro = () => {
             </div>
 
             <p className="mt-8 pt-6 border-t font-medium text-gray-800 text-center italic">
-              At the end of the simulation you will see your Distributor ROI, market share, retailer satisfaction, and cash flow health. Use each round to refine your strategy and try to build the most efficient and profitable distribution network.
+              At the end of the simulation you will see your Distributor ROI, retailer satisfaction, and cash flow health. Use each round to refine your strategy and try to build the most efficient and profitable distribution network.
             </p>
           </div>
 

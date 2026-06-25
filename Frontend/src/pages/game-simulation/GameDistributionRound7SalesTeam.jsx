@@ -9,20 +9,10 @@ const GameDistributionRound7SalesTeam = () => {
     return saved !== null ? parseInt(saved, 10) : 5;
   });
 
-  const [retailersToVisit, setRetailersToVisit] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7RetailersToVisit");
-    return saved !== null ? parseInt(saved, 10) : 250;
-  });
-
-  const [newRetailerEffort, setNewRetailerEffort] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7NewRetailerEffort");
-    return saved !== null ? parseInt(saved, 10) : 1; 
-  }); 
-
-  const [schemePushIntensity, setSchemePushIntensity] = useState(() => {
-    const saved = localStorage.getItem("gameDistributionR7SchemePushIntensity");
-    return saved !== null ? parseInt(saved, 10) : 1;
-  });
+  // Always start from 0 (fresh slate for each round visit)
+  const [retailersToVisit, setRetailersToVisit] = useState(0);
+  const [newRetailerEffort, setNewRetailerEffort] = useState(0);
+  const [schemePushIntensity, setSchemePushIntensity] = useState(0);
 
   const levelLabels = ["Low", "Medium", "High"];
 

@@ -27,7 +27,7 @@ const GameDistributionRound3Intro = () => {
   const r2ClosingCash = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
   
   // Cash in Hand = Opening Cash Balance + Payment Received (from R2) – Trade Scheme (from R2)
-  const cashInHand = parseInt(localStorage.getItem("gameDistributionCash") || "5000000", 10);
+  const cashInHand = r2ClosingCash + r2NetPaymentReceived - r2TradeSchemeSpend;
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
@@ -38,6 +38,26 @@ const GameDistributionRound3Intro = () => {
   };
 
   const handleNext = () => {
+    // Save cashInHand synchronously so the Inventory page reads the correct value on mount
+    localStorage.setItem("gameDistributionCash", Math.round(cashInHand).toString());
+
+    // Reset Round 3 input screens to defaults
+    [
+      "gameDistributionR3QuantityDiscount",
+      "gameDistributionR3RetailDisplay",
+      "gameDistributionR3CreditDays",
+      "gameDistributionR3MaxCreditLimit",
+      "gameDistributionR3EarlyPaymentDiscount",
+      "gameDistributionR3EnforcementLevel",
+      "gameDistributionR3RetailersToVisit",
+      "gameDistributionR3NewRetailerEffort",
+      "gameDistributionR3SchemePushIntensity",
+      "gameDistributionR3OrderFulfilment",
+      "gameDistributionR3DeliveryFrequency",
+      "gameDistributionR3PriorityAllocation",
+      "gameDistributionR3StockBuffer",
+    ].forEach(key => localStorage.removeItem(key));
+
     navigate('/game-distribution/round3-inventory');
   };
 
@@ -67,17 +87,18 @@ const GameDistributionRound3Intro = () => {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
+
                 { 
                   label: "Opening Stock (From Last Screen)", 
                   value: `Milk: ${inventory.milk.qty} | Dark: ${inventory.dark.qty} | Wafer: ${inventory.wafer.qty} | Gift: ${inventory.gift.qty}` 
                 },
-                { label: "Last Round Sale (Value)", value: formatCurrency(r2TotalSales) },
-                { label: "Retailer Outstanding (From Last Screen)", value: formatCurrency(r2RetailerOutstanding) },
-                { label: "Trade Scheme to be Reimbursed by the Company (Company has reimbursed previous round scheme)", value: formatCurrency(r2TradeSchemeSpend) },
+                { label: "Last Round Sale (R2)", value: formatCurrency(r2TotalSales) },
+                { label: "Retailer Outstanding (R2)", value: formatCurrency(r2RetailerOutstanding) },
+                { label: "Trade Scheme to be Reimbursed by the Company", value: formatCurrency(r2TradeSchemeSpend) },
                 { label: "Cash in Hand", value: formatCurrency(cashInHand) },
               ].map((item, idx) => (
                 <div key={idx} className="bg-emerald-50 p-4 rounded-lg border border-emerald-100 flex flex-col justify-center">
-                  <span className="text-sm text-gray-500 font-bold uppercase tracking-wider mb-1">{item.label}</span>
+                  <span className="text-lg text-gray-500 font-bold tracking-wider mb-1">{item.label}</span>
                   <span className="text-xl font-black text-emerald-800">{item.value}</span>
                 </div>
               ))}

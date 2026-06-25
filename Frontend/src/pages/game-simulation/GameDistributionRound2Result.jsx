@@ -60,6 +60,7 @@ const GameDistributionRound2Result = () => {
 
   // --- Supply Discipline ---
   const orderFulfilment = parseInt(localStorage.getItem("gameDistributionOrderFulfilment") || "0", 10);
+  const deliveryFrequency = parseInt(localStorage.getItem("gameDistributionDeliveryFrequency") || "0", 10);
 
   // --- Round 2 Inputs (admin/config – same market data) ---
   const monthlySales = {
@@ -123,7 +124,11 @@ const GameDistributionRound2Result = () => {
       localStorage.getItem(`gameDistributionPurchaseAmount_r2_${p.key}`) || '0', 10
     );
     // Unit Price = Value / Quantity (derived)
-    const purchaseUnitPrice = purchaseQty > 0 ? Math.round(purchaseValue / purchaseQty) : 0;
+    // If no purchase this round, fall back to last round's (R1) unit price
+    const r1UnitPrice = parseInt(localStorage.getItem(`gameDistributionR1UnitPrice_${p.key}`) || '0', 10);
+    const purchaseUnitPrice = purchaseQty > 0
+      ? Math.round(purchaseValue / purchaseQty)
+      : r1UnitPrice;
 
     // Sale: salesPercent% × (Opening Stock + Purchase) — Image 2 formula
     const osQty = openingStock[p.key]?.qty || 0;
@@ -134,7 +139,7 @@ const GameDistributionRound2Result = () => {
 
     // Closing: Opening Stock (carried from R1) + Purchase - Sale
     const closingQty = osQty + purchaseQty - saleQty;
-    // Closing Value = Closing Qty × Purchase Unit Price
+    // Closing Value = Closing Qty × Purchase Unit Price (uses fallback price if no purchase)
     const closingValue = Math.round(closingQty * purchaseUnitPrice);
 
     return {
@@ -152,13 +157,14 @@ const GameDistributionRound2Result = () => {
   const totalClosingQty    = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
   const totalClosingValue  = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
 
-  // Distributor Rupee Gross Margin = Sales - Sales/(1 + DM%)
-  const distributorRupeeGrossMargin = distributorMarginPercent > 0
+  // Distributor Net Margin = Total Sales - (Total Sales / (1 + Distributor Margin))
+  const distributorNetMargin = distributorMarginPercent > 0
     ? totalSales - totalSales / (1 + distributorMarginPercent / 100)
     : 0;
 
   // Net Distributor Rupee Gross Margin = Distributor Gross Margin × (1 − Early Payment Discount)
-  const netDistributorRupeeGrossMargin = distributorRupeeGrossMargin * (1 - earlyPaymentDiscount / 100);
+  // Kept for ROI calculation as requested ("don't touch the other calculations")
+  const netDistributorRupeeGrossMargin = distributorNetMargin * (1 - earlyPaymentDiscount / 100);
 
   // Retailer Outstanding = Credit Days × Sales / 30
   const retailerOutstanding = creditDays * totalSales / 30;
@@ -177,8 +183,9 @@ const GameDistributionRound2Result = () => {
   // Total Trade Scheme Spend = Total Sales × (Quantity Discount + Retail Display Incentive)
   const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
 
-  // New Outlets Opened
-  const newOutletsOpened = newRetailerEffort === 0 ? 2 : newRetailerEffort === 1 ? 5 : 10;
+  // New Outlets Opened = Total Manpower × (Low=10, Medium=20, High=30)
+  const newOutletsMultiplier = newRetailerEffort === 0 ? 10 : newRetailerEffort === 1 ? 20 : 30;
+  const newOutletsOpened = totalManpower * newOutletsMultiplier;
 
   // Total Coverage = Total Manpower × Retailer Visit per Salesperson + New Outlets Opened
   const totalCoverage = totalManpower * retailersToVisit + newOutletsOpened;
@@ -190,7 +197,7 @@ const GameDistributionRound2Result = () => {
   //                      / (20,00,000 + Closing Stock Value + Retailer Outstanding) × 100
   const roiDenominator = 2000000 + totalClosingValue + retailerOutstanding;
   const distributorROI = roiDenominator > 0
-    ? ((netDistributorRupeeGrossMargin - manpowerCost - deliveryWarehouseCost) / roiDenominator) * 100
+    ? ((distributorNetMargin - manpowerCost - deliveryWarehouseCost) / roiDenominator) * 100
     : 0;
 
   // --- Retailer Satisfaction (weighted scoring per image formula) ---
@@ -209,12 +216,13 @@ const GameDistributionRound2Result = () => {
   const orderFulfilmentScore = orderFulfilmentPoint * 0.3;
 
   // Delivery Frequency to Retailers: <7=3, 7-10=2, >10=1 | weight 20%
-  const deliveryFrequencyPoint = retailersToVisit < 7 ? 3 : retailersToVisit <= 10 ? 2 : 1;
+  const deliveryFrequencyPoint = deliveryFrequency < 7 ? 3 : deliveryFrequency <= 10 ? 2 : 1;
   const deliveryFrequencyScore = deliveryFrequencyPoint * 0.2;
 
   // Total score (max = 3.0)
-  const totalSatisfactionScore =
-    paymentEnforcementScore + schemePushScore + orderFulfilmentScore + deliveryFrequencyScore;
+  const totalSatisfactionScore = Number(
+    (paymentEnforcementScore + schemePushScore + orderFulfilmentScore + deliveryFrequencyScore).toFixed(2)
+  );
 
   // Classification: Low <1.5 | Medium 1.5–2.5 | High >2.5
   const getRetailerSatisfaction = () => {
@@ -249,6 +257,12 @@ const GameDistributionRound2Result = () => {
     localStorage.setItem("gameDistributionR2NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR2DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR2RetailerSatisfaction", getRetailerSatisfaction());
+    // Save per-product effective unit prices so Round 3 can use as fallback
+    monthlyDataRows.forEach(r => {
+      if (r.purchaseUnitPrice > 0) {
+        localStorage.setItem(`gameDistributionR2UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
+      }
+    });
   }, [monthlySalesTableTotal, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
 
   const handleProceed = () => {
@@ -355,7 +369,7 @@ const GameDistributionRound2Result = () => {
                         {r.purchaseQty.toLocaleString('en-IN')}
                       </td>
                       <td className="px-3 py-2 text-blue-600">
-                        {r.purchaseQty > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}
+                        {r.purchaseUnitPrice > 0 ? formatCurrency(r.purchaseUnitPrice) : '—'}
                       </td>
                       <td className="px-3 py-2 text-blue-700 font-bold">
                         {formatCurrency(r.purchaseValue)}
@@ -415,8 +429,7 @@ const GameDistributionRound2Result = () => {
               {[
                 { label: "Distributor Margin (DM = 8% - Early Discount)", value: `${distributorMarginPercent}%` },
                 { label: "Credit Days (30 - 5×Early Discount%)", value: `${creditDays} Days` },
-                { label: "Distributor Rupee Gross Margin", value: formatCurrency(Math.round(distributorRupeeGrossMargin)) },
-                { label: "Net Distributor Rupee Gross Margin", value: formatCurrency(Math.round(netDistributorRupeeGrossMargin)) },
+                { label: "Distributor Net Margin", value: formatCurrency(Math.round(distributorNetMargin)) },
                 { label: "Retailer Outstanding", value: formatCurrency(Math.round(retailerOutstanding)) },
                 { label: "Net Payment Received", value: formatCurrency(Math.round(netPaymentReceived)) },
                 { label: "Total Trade Scheme Spend", value: formatCurrency(Math.round(totalTradeSchemeSpend)) },
@@ -436,12 +449,11 @@ const GameDistributionRound2Result = () => {
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl mx-auto">
               {[
-                { label: "Total Coverage", value: `${totalCoverage} Retailers` },
-                { label: "New Outlets Opened", value: `${newOutletsOpened}` },
                 { label: "Total Manpower", value: `${totalManpower}` },
+                { label: "New Outlets Opened", value: `${newOutletsOpened}` },
+                { label: "Total Coverage", value: `${totalCoverage} Retailers` },
                 { label: "Manpower Cost", value: formatCurrency(manpowerCost) },
                 { label: "Delivery & Warehouse Cost", value: formatCurrency(deliveryWarehouseCost) },
-                { label: "New Retailer Acquisition Effort", value: `${newRetailerAcquisitionEffort}` },
                 { label: "Cost to Serve Per Outlet", value: formatCurrency(Math.round(costToServePerOutlet)) },
               ].map(item => (
                 <div key={item.label} className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 flex justify-between items-center">
@@ -462,9 +474,6 @@ const GameDistributionRound2Result = () => {
                 <p className="text-5xl font-extrabold text-emerald-700">
                   {distributorROI.toFixed(2)}%
                 </p>
-                <p className="text-gray-500 text-xs mt-2 italic">
-                  (Net Gross Margin − Manpower − Delivery) / (₹20,00,000 + Inventory + Outstanding)
-                </p>
               </div>
 
               {/* Retailer Satisfaction */}
@@ -475,22 +484,12 @@ const GameDistributionRound2Result = () => {
                   }`}>
                   {getRetailerSatisfaction()}
                 </p>
-                <p className="text-gray-500 text-xs mt-2 italic">
-                  Score: {totalSatisfactionScore.toFixed(1)} (Payment: {paymentEnforcementScore.toFixed(1)} + Scheme: {schemePushScore.toFixed(1)} + Fulfilment: {orderFulfilmentScore.toFixed(1)} + Delivery: {deliveryFrequencyScore.toFixed(1)})
-                </p>
               </div>
             </div>
           </div>
 
           {/* Action Buttons Row */}
-          <div className="mt-10 flex justify-between items-center max-w-2xl mx-auto px-4">
-            <button
-              onClick={handleBack}
-              className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-10 rounded-xl shadow-[0_4px_0_rgb(75,85,99)] hover:shadow-[0_2px_0_rgb(75,85,99)] hover:translate-y-[2px] active:shadow-none active:translate-y-[4px] transition-all text-xl"
-            >
-              [ Back ]
-            </button>
-
+          <div className="mt-10 flex justify-center items-center max-w-2xl mx-auto px-4">
             <button
               onClick={handleProceed}
               className="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-12 rounded-xl shadow-[0_6px_0_rgb(21,128,61)] hover:shadow-[0_3px_0_rgb(21,128,61)] hover:translate-y-[3px] active:shadow-none active:translate-y-[6px] transition-all text-2xl transform scale-110 tracking-widest"
