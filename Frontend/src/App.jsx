@@ -57,6 +57,7 @@ import GameDistributionRound7CreditControl from "./pages/game-simulation/GameDis
 import GameDistributionRound7SalesTeam from "./pages/game-simulation/GameDistributionRound7SalesTeam";
 import GameDistributionRound7SupplyDiscipline from "./pages/game-simulation/GameDistributionRound7SupplyDiscipline";
 import GameDistributionRound7Result from "./pages/game-simulation/GameDistributionRound7Result";
+import GameDistributionSummary from "./pages/game-simulation/GameDistributionSummary";
 import Registration from './pages/Registration';
 import Login from './pages/Login';
 import CorporateLogin from './pages/CorporateLogin';
@@ -156,6 +157,7 @@ function App() {
         <Route path="/game-distribution/round7-sales-team" element={<GameDistributionRound7SalesTeam />} />
         <Route path="/game-distribution/round7-supply-discipline" element={<GameDistributionRound7SupplyDiscipline />} />
         <Route path="/game-distribution/round7-result" element={<GameDistributionRound7Result />} />
+        <Route path="/game-distribution/summary" element={<GameDistributionSummary />} />
         <Route path="/login" element={<Login />} />
         <Route path="/game-login" element={<GameLogin />} />
         <Route path="/corporate-login" element={<CorporateLogin />} />

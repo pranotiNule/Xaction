@@ -22,11 +22,11 @@ const GameDistributionRound7Result = () => {
   // Separate reads for Monthly Data table
   const openingStock = (() => {
     const saved = localStorage.getItem("gameDistributionR7OpeningStock");
-    return saved ? JSON.parse(saved) : { milk: {qty:0}, dark: {qty:0}, wafer: {qty:0}, gift: {qty:0} };
+    return saved ? JSON.parse(saved) : { milk: { qty: 0 }, dark: { qty: 0 }, wafer: { qty: 0 }, gift: { qty: 0 } };
   })();
   const purchasesOnly = (() => {
     const saved = localStorage.getItem("gameDistributionRound7Inventory");
-    return saved ? JSON.parse(saved) : { milk: {qty:0}, dark: {qty:0}, wafer: {qty:0}, gift: {qty:0} };
+    return saved ? JSON.parse(saved) : { milk: { qty: 0 }, dark: { qty: 0 }, wafer: { qty: 0 }, gift: { qty: 0 } };
   })();
 
   // --- Round 6 Data ---
@@ -101,12 +101,12 @@ const GameDistributionRound7Result = () => {
     return { ...p, purchaseQty, purchaseUnitPrice, purchaseValue, saleQty, saleUnitPrice, saleValue, closingQty, closingValue };
   });
 
-  const totalPurchaseQty   = monthlyDataRows.reduce((s, r) => s + r.purchaseQty, 0);
+  const totalPurchaseQty = monthlyDataRows.reduce((s, r) => s + r.purchaseQty, 0);
   const totalPurchaseValue = monthlyDataRows.reduce((s, r) => s + r.purchaseValue, 0);
-  const totalSaleQty       = monthlyDataRows.reduce((s, r) => s + r.saleQty, 0);
-  const totalSaleValue     = monthlyDataRows.reduce((s, r) => s + r.saleValue, 0);
-  const totalClosingQty    = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
-  const totalClosingValue  = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
+  const totalSaleQty = monthlyDataRows.reduce((s, r) => s + r.saleQty, 0);
+  const totalSaleValue = monthlyDataRows.reduce((s, r) => s + r.saleValue, 0);
+  const totalClosingQty = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
+  const totalClosingValue = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
 
   const distributorMarginPercent = 8;
   const marginPercent = distributorMarginPercent - earlyPaymentDiscount; // For UI display
@@ -129,11 +129,11 @@ const GameDistributionRound7Result = () => {
   const acquisitionMultiplier = newRetailerEffort === 0 ? 10 : newRetailerEffort === 1 ? 20 : 30;
   const newRetailerAcquisitionEffort = totalManpower * acquisitionMultiplier;
   const totalCoverage = totalManpower * retailersToVisit + newRetailerAcquisitionEffort;
-  
+
   const manpowerCost = totalManpower * 20000;
   const deliveryWarehouseCost = 100000;
   const costToServePerOutlet = totalCoverage > 0 ? (manpowerCost + deliveryWarehouseCost) / totalCoverage : 0;
-  
+
   // ROI Formula: (Net Gross Margin - Manpower - Delivery & Warehouse) / (20,00,000 + Net Inventory + Retailer Outstanding) * 100
   const roiDenominator = 2000000 + totalClosingValue + retailerOutstanding;
   const distributorROI = roiDenominator > 0
@@ -167,7 +167,8 @@ const GameDistributionRound7Result = () => {
     localStorage.setItem("gameDistributionR7NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR7DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR7RetailerSatisfaction", getRetailerSatisfaction());
-  }, [totalSales, retailerOutstanding, netPaymentReceived, distributorROI]);
+    localStorage.setItem("gameDistributionR7CashInHand", Math.round(cashInHand).toString());
+  }, [totalSales, retailerOutstanding, netPaymentReceived, distributorROI, cashInHand]);
 
   const handleFinish = async () => {
     // Ensure we use a stable ID (userEmail is used for the testgame45 bypass)
@@ -186,7 +187,7 @@ const GameDistributionRound7Result = () => {
       // Need to import supabase if not already imported, let's check
       // Actually we will call a custom insert directly to be safe.
       const { supabase } = await import('./supabaseClient');
-      
+
       const { error } = await supabase
         .from('user_game_results')
         .insert([finalResults]);
@@ -202,7 +203,7 @@ const GameDistributionRound7Result = () => {
       alert("Game completed! Note: Could not connect to the database.");
     }
 
-    navigate("/game-simulation");
+    navigate("/game-distribution/summary");
   };
 
   const handleBack = () => {
@@ -222,12 +223,14 @@ const GameDistributionRound7Result = () => {
         </div>
         <div className="p-8 sm:p-10">
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10 max-w-3xl mx-auto">
             {[
-              { label: "Distributor Margin", value: `${distributorMarginPercent}%`, color: "text-emerald-700" },
-              { label: "Trade Scheme", value: `${totalSchemePercent}%`, color: "text-blue-700" },
-              { label: "Tesle Scheme", value: "7% Trade", color: "text-red-600" },
-              { label: "Retailer Push", value: getRetailerSatisfaction(), color: "text-amber-600" }
+              { label: "Market State", value: "Year-End Pressure", color: "text-red-700" },
+              { label: "Target Status", value: "95% Achieved", color: "text-emerald-700" },
+              { label: "Company Push", value: "+20% Primary", color: "text-red-600" },
+              { label: "Inventory Levels", value: "Spiking", color: "text-amber-600" },
+              { label: "Capital Needs", value: "Increased", color: "text-blue-700" },
+              { label: "ROI Status", value: "Under Pressure", color: "text-orange-600" }
             ].map(item => (
               <div key={item.label} className="bg-yellow-50 p-3 rounded-xl border border-yellow-200 text-center">
                 <p className="text-sm text-gray-500 font-medium">{item.label}</p>
@@ -331,26 +334,26 @@ const GameDistributionRound7Result = () => {
             </div>
           </div>
 
-          <div className="mb-10 max-w-5xl mx-auto px-2">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
+          <div className="mb-8 max-w-4xl mx-auto px-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {/* ROI Box */}
-              <div className="bg-emerald-50 p-6 rounded-[2rem] border-[6px] border-emerald-500 text-center shadow-lg transition-all hover:scale-105 active:scale-95 ring-2 ring-emerald-100 ring-offset-2 flex flex-col justify-center">
-                <p className="text-emerald-600 font-black text-sm mb-2 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Distributor ROI</p>
-                <p className="text-4xl lg:text-5xl font-black text-emerald-900 italic tracking-tighter drop-shadow-md">{distributorROI.toFixed(2)}%</p>
+              <div className="bg-emerald-50 p-6 rounded-2xl border-2 border-emerald-300 text-center shadow-sm flex flex-col justify-center">
+                <p className="text-gray-600 font-bold text-lg mb-1">Distributor ROI</p>
+                <p className="text-4xl font-extrabold text-emerald-700">{distributorROI.toFixed(2)}%</p>
               </div>
 
               {/* Push Rating Box */}
-              <div className="bg-amber-50 p-6 rounded-[2rem] border-[6px] border-amber-500 text-center shadow-lg transition-all hover:scale-105 active:scale-95 ring-2 ring-amber-100 ring-offset-2 flex flex-col justify-center">
-                <p className="text-amber-600 font-black text-sm mb-2 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Retailer Satisfaction</p>
-                <p className={`text-4xl lg:text-5xl font-black italic tracking-tighter drop-shadow-md ${getRetailerSatisfaction() === 'High' ? 'text-emerald-700' : getRetailerSatisfaction() === 'Medium' ? 'text-amber-600' : 'text-red-600'}`}>
+              <div className="bg-amber-50 p-6 rounded-2xl border-2 border-amber-300 text-center shadow-sm flex flex-col justify-center">
+                <p className="text-gray-600 font-bold text-lg mb-1">Retailer Satisfaction</p>
+                <p className={`text-4xl font-extrabold ${getRetailerSatisfaction() === 'High' ? 'text-emerald-700' : getRetailerSatisfaction() === 'Medium' ? 'text-amber-600' : 'text-red-600'}`}>
                   {getRetailerSatisfaction()}
                 </p>
               </div>
 
               {/* Cash in Hand Box */}
-              <div className="bg-blue-50 p-6 rounded-[2rem] border-[6px] border-blue-500 text-center shadow-lg transition-all hover:scale-105 active:scale-95 ring-2 ring-blue-100 ring-offset-2 flex flex-col justify-center">
-                <p className="text-blue-600 font-black text-sm mb-2 uppercase tracking-[0.2em] underline decoration-yellow-400 decoration-4">Cash in hand</p>
-                <p className="text-3xl lg:text-4xl font-black text-blue-900 italic tracking-tighter drop-shadow-md">{formatCurrency(cashInHand)}</p>
+              <div className="bg-blue-50 p-6 rounded-2xl border-2 border-blue-300 text-center shadow-sm flex flex-col justify-center">
+                <p className="text-gray-600 font-bold text-lg mb-1">Cash in Hand</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-blue-700">{formatCurrency(cashInHand)}</p>
               </div>
             </div>
           </div>

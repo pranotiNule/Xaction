@@ -155,6 +155,9 @@ const GameDistributionRoundResult = () => {
   // Uses the trade scheme values chosen on the Trade Scheme screen
   const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
 
+  // Cash in Hand = Opening Cash Balance + Payment Received – Trade Scheme
+  const cashInHand = currentCash + netPaymentReceived - totalTradeSchemeSpend;
+
   // New Outlets Opened = Total Manpower × (Low=10, Medium=20, High=30)
   const newOutletsMultiplier = newRetailerEffort === 0 ? 10 : newRetailerEffort === 1 ? 20 : 30;
   const newOutletsOpened = totalManpower * newOutletsMultiplier;
@@ -237,13 +240,15 @@ const GameDistributionRoundResult = () => {
     localStorage.setItem("gameDistributionR1NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR1DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR1RetailerSatisfaction", getRetailerSatisfaction());
+    localStorage.setItem("gameDistributionR1CashInHand", Math.round(cashInHand).toString());
+    
     // Save per-product unit prices so next rounds can use as fallback when no purchase is made
     monthlyDataRows.forEach(r => {
       if (r.purchaseUnitPrice > 0) {
         localStorage.setItem(`gameDistributionR1UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
       }
     });
-  }, [monthlySalesTableTotal, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
+  }, [monthlySalesTableTotal, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI, cashInHand]);
 
   const handleExit = () => {
     // Calculate ending inventory after sales (Carry Forward: Opening Stock + Purchase - Sales)

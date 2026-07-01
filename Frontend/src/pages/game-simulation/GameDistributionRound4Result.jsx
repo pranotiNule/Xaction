@@ -138,14 +138,14 @@ const GameDistributionRound4Result = () => {
   // Net Cash Received = Total Sales - Retailer Outstanding
   const netPaymentReceived = totalSales - retailerOutstanding;
 
-  // Cash in Hand (Opening)
-  const cashInHand = currentCash + r3NetPaymentReceived - r3TradeSchemeSpend;
-
   // Trade Scheme = Total Sales × (Quantity Discount + Retail Display Incentive)
   const quantityDiscount = parseFloat(localStorage.getItem("gameDistributionR4QuantityDiscount") || "0");
   const retailDisplay = parseFloat(localStorage.getItem("gameDistributionR4RetailDisplay") || "0");
   const totalSchemePercent = quantityDiscount + retailDisplay;
   const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
+
+  // Cash in Hand = Opening Cash Balance + Payment Received – Trade Scheme
+  const cashInHand = currentCash + netPaymentReceived - totalTradeSchemeSpend;
 
   // --- Operational Summary (per image formula) ---
   // Total Manpower = 5 (given by Admin)
@@ -221,13 +221,15 @@ const GameDistributionRound4Result = () => {
     localStorage.setItem("gameDistributionR4NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR4DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR4RetailerSatisfaction", getRetailerSatisfaction());
+    localStorage.setItem("gameDistributionR4CashInHand", Math.round(cashInHand).toString());
+    
     // Save per-product effective unit prices so Round 5 can use as fallback
     monthlyDataRows.forEach(r => {
       if (r.purchaseUnitPrice > 0) {
         localStorage.setItem(`gameDistributionR4UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
       }
     });
-  }, [totalSales, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
+  }, [totalSales, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI, cashInHand]);
 
   const handleProceed = () => {
     // Calculate ending inventory after sales (Carry Forward: Opening Stock + Purchase - Sales)

@@ -168,12 +168,11 @@ const GameDistributionRound3Result = () => {
   const currentCash = parseInt(localStorage.getItem("gameDistributionCash") || `${openingWorkingCapital}`, 10);
   const inventoryInvestment = Math.max(0, openingWorkingCapital - currentCash);
 
-  // Cash in Hand = Opening Cash Balance + Payment Received (from R2) – Trade Scheme (from R2)
-  // Company has reimbursed previous round scheme
-  const cashInHand = currentCash + r2NetPaymentReceived - r2TradeSchemeSpend;
-
   // Total Trade Scheme Spend = Total Sales × (Quantity Discount + Retail Display Incentive)
   const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
+
+  // Cash in Hand = Opening Cash Balance + Payment Received – Trade Scheme
+  const cashInHand = currentCash + netPaymentReceived - totalTradeSchemeSpend;
 
   // New Outlets Opened = Total Manpower × (Low=40, Medium=70, High=100)
   const newOutletsMultiplier = newRetailerEffort === 0 ? 40 : newRetailerEffort === 1 ? 70 : 100;
@@ -253,13 +252,14 @@ const GameDistributionRound3Result = () => {
     localStorage.setItem("gameDistributionR3NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR3DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR3RetailerSatisfaction", getRetailerSatisfaction());
+    localStorage.setItem("gameDistributionR3CashInHand", Math.round(cashInHand).toString());
     // Save per-product effective unit prices so Round 4 can use as fallback
     monthlyDataRows.forEach(r => {
       if (r.purchaseUnitPrice > 0) {
         localStorage.setItem(`gameDistributionR3UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
       }
     });
-  }, [monthlySalesTableTotal, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
+  }, [monthlySalesTableTotal, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI, cashInHand]);
 
   const handleProceed = () => {
     // Calculate ending inventory after sales (Carry Forward: Opening Stock + Purchase - Sales)

@@ -129,8 +129,8 @@ const GameDistributionRound5Result = () => {
   // Net Cash Received = Total Sales - Retailer Outstanding
   const netPaymentReceived = totalSales - retailerOutstanding;
 
-  // Cash in Hand (Opening)
-  const cashInHand = currentCash + r4NetPaymentReceived - r4TradeSchemeSpend;
+  // Cash in Hand = Opening Cash Balance + Payment Received – Trade Scheme
+  const cashInHand = currentCash + netPaymentReceived - totalTradeSchemeSpend;
 
   // --- Operational Summary (per image formula) ---
   // Total Manpower = 6 (given by Admin)
@@ -206,13 +206,15 @@ const GameDistributionRound5Result = () => {
     localStorage.setItem("gameDistributionR5NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR5DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR5RetailerSatisfaction", getRetailerSatisfaction());
+    localStorage.setItem("gameDistributionR5CashInHand", Math.round(cashInHand).toString());
+    
     // Save per-product effective unit prices so Round 6 can use as fallback
     monthlyDataRows.forEach(r => {
       if (r.purchaseUnitPrice > 0) {
         localStorage.setItem(`gameDistributionR5UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
       }
     });
-  }, [totalSales, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
+  }, [totalSales, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI, cashInHand]);
 
   const handleProceed = () => {
     // Calculate ending inventory after sales (Carry Forward: Opening Stock + Purchase - Sales)

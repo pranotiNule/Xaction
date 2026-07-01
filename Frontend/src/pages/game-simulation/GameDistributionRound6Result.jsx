@@ -21,11 +21,11 @@ const GameDistributionRound6Result = () => {
   // Separate reads for Monthly Data table
   const openingStock = (() => {
     const saved = localStorage.getItem("gameDistributionR6OpeningStock");
-    return saved ? JSON.parse(saved) : { milk: {qty:0}, dark: {qty:0}, wafer: {qty:0}, gift: {qty:0} };
+    return saved ? JSON.parse(saved) : { milk: { qty: 0 }, dark: { qty: 0 }, wafer: { qty: 0 }, gift: { qty: 0 } };
   })();
   const purchasesOnly = (() => {
     const saved = localStorage.getItem("gameDistributionRound6Inventory");
-    return saved ? JSON.parse(saved) : { milk: {qty:0}, dark: {qty:0}, wafer: {qty:0}, gift: {qty:0} };
+    return saved ? JSON.parse(saved) : { milk: { qty: 0 }, dark: { qty: 0 }, wafer: { qty: 0 }, gift: { qty: 0 } };
   })();
 
   // --- Round 5 Data (for Cash flow) ---
@@ -104,12 +104,12 @@ const GameDistributionRound6Result = () => {
     return { ...p, purchaseQty, purchaseUnitPrice, purchaseValue, saleQty, saleUnitPrice, saleValue, closingQty, closingValue };
   });
 
-  const totalPurchaseQty   = monthlyDataRows.reduce((s, r) => s + r.purchaseQty, 0);
+  const totalPurchaseQty = monthlyDataRows.reduce((s, r) => s + r.purchaseQty, 0);
   const totalPurchaseValue = monthlyDataRows.reduce((s, r) => s + r.purchaseValue, 0);
-  const totalSaleQty       = monthlyDataRows.reduce((s, r) => s + r.saleQty, 0);
-  const totalSaleValue     = monthlyDataRows.reduce((s, r) => s + r.saleValue, 0);
-  const totalClosingQty    = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
-  const totalClosingValue  = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
+  const totalSaleQty = monthlyDataRows.reduce((s, r) => s + r.saleQty, 0);
+  const totalSaleValue = monthlyDataRows.reduce((s, r) => s + r.saleValue, 0);
+  const totalClosingQty = monthlyDataRows.reduce((s, r) => s + r.closingQty, 0);
+  const totalClosingValue = monthlyDataRows.reduce((s, r) => s + r.closingValue, 0);
 
   // --- Financial Summary (per image formula) ---
   // Distributor Gross Margin = Total Sales - (Total Sales / (1 + Distributor Margin%))
@@ -125,12 +125,12 @@ const GameDistributionRound6Result = () => {
   // Net Cash Received = Total Sales - Retailer Outstanding
   const netPaymentReceived = totalSales - retailerOutstanding;
 
-  // Cash in Hand (Opening)
-  const cashInHand = currentCash + r5NetPaymentReceived - r5TradeSchemeSpend;
-
   // Trade Scheme = Total Sales × (Quantity Discount + Retail Display Incentive)
   const totalSchemePercent = quantityDiscount + retailDisplay;
   const totalTradeSchemeSpend = totalSales * (totalSchemePercent / 100);
+
+  // Cash in Hand = Opening Cash Balance + Payment Received – Trade Scheme
+  const cashInHand = currentCash + netPaymentReceived - totalTradeSchemeSpend;
 
   // --- Operational Summary (per image formula) ---
   // Total Manpower = 6 (given by Admin)
@@ -197,13 +197,15 @@ const GameDistributionRound6Result = () => {
     localStorage.setItem("gameDistributionR6NetPaymentReceived", Math.round(netPaymentReceived).toString());
     localStorage.setItem("gameDistributionR6DistributorROI", distributorROI.toFixed(2));
     localStorage.setItem("gameDistributionR6RetailerSatisfaction", getRetailerSatisfaction());
+    localStorage.setItem("gameDistributionR6CashInHand", Math.round(cashInHand).toString());
+    
     // Save per-product effective unit prices so Round 7 can use as fallback
     monthlyDataRows.forEach(r => {
       if (r.purchaseUnitPrice > 0) {
         localStorage.setItem(`gameDistributionR6UnitPrice_${r.key}`, r.purchaseUnitPrice.toString());
       }
     });
-  }, [totalSales, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI]);
+  }, [totalSales, retailerOutstanding, totalTradeSchemeSpend, netPaymentReceived, distributorROI, cashInHand]);
 
   const handleProceed = () => {
     const carryForwardInventory = {
@@ -240,12 +242,14 @@ const GameDistributionRound6Result = () => {
         </div>
         <div className="p-8 sm:p-10">
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10 max-w-4xl mx-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10 max-w-3xl mx-auto">
             {[
-              { label: "Distributor Margin", value: `${distributorMarginPercent}%`, color: "text-emerald-700" },
-              { label: "Trade Scheme", value: `${totalSchemePercent}%`, color: "text-blue-700" },
-              { label: "Tesle Scheme", value: "7% Trade", color: "text-red-600" },
-              { label: "Retailer Push", value: getRetailerSatisfaction(), color: "text-amber-600" }
+              { label: "Market State", value: "Highly Competitive", color: "text-red-700" },
+              { label: "Tesle Situation", value: "Aggressive Push", color: "text-red-600" },
+              { label: "Retailer Demand", value: "Scheme Driven", color: "text-blue-700" },
+              { label: "Tedbury Share", value: "Under Pressure", color: "text-amber-600" },
+              { label: "Shelf Space", value: "At Risk", color: "text-orange-600" },
+              { label: "Profitability", value: "Threatened", color: "text-emerald-700" }
             ].map(item => (
               <div key={item.label} className="bg-yellow-50 p-3 rounded-xl border border-yellow-200 text-center">
                 <p className="text-sm text-gray-500 font-medium">{item.label}</p>

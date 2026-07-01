@@ -31,11 +31,26 @@ const GameLogin = () => {
       if (activeRole === "student") {
         // 1. Hardcoded test participant credentials
         if (email.toLowerCase() === "testgame45" && password === "testgame45") {
+          const userName = "Sunshine Agency";
+
+          // Check if user has already completed the game
+          const { data: existingResult, error: checkError } = await supabase
+            .from("user_game_results")
+            .select("user_name")
+            .eq("user_name", userName)
+            .maybeSingle();
+
+          if (existingResult) {
+            setError("You have already completed the game simulation and cannot play again.");
+            setLoading(false);
+            return;
+          }
+
           localStorage.setItem("token", "dummy-game-token-12345");
           localStorage.setItem("userRole", "student");
           localStorage.setItem("userEmail", email);
           localStorage.setItem("simulation", "Distribution Simulation");
-          localStorage.setItem("userName", "Sunshine Agency");
+          localStorage.setItem("userName", userName);
           localStorage.setItem("userDegree", "Distribution Simulation");
           
           setLoading(false);
@@ -54,11 +69,26 @@ const GameLogin = () => {
           if (dbError) throw dbError;
 
           if (user && user.password === password) {
+            const userName = user.name || "Participant";
+
+            // Check if user has already completed the game
+            const { data: existingResult, error: checkError } = await supabase
+              .from("user_game_results")
+              .select("user_name")
+              .eq("user_name", userName)
+              .maybeSingle();
+
+            if (existingResult) {
+              setError("You have already completed the game simulation and cannot play again.");
+              setLoading(false);
+              return;
+            }
+
             localStorage.setItem("token", `supabase-game-token-${user.id}`);
             localStorage.setItem("userRole", "student");
             localStorage.setItem("userEmail", user.email);
             localStorage.setItem("simulation", "Distribution Simulation");
-            localStorage.setItem("userName", user.name || "Participant");
+            localStorage.setItem("userName", userName);
             localStorage.setItem("userDegree", "Distribution Simulation");
             
             setLoading(false);
