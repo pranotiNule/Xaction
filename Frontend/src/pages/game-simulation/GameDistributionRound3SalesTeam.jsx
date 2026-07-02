@@ -41,9 +41,8 @@ const GameDistributionRound3SalesTeam = () => {
   // Total Manpower = Coverage / Retailer Visit per Salesperson (rounded)
   // Round 3: Coverage increases due to expansion — 1050 existing + new outlets
   const totalCoverage = 2050; // 1050 existing + 1000 new
-  const totalManpower = retailersToVisit > 0
-    ? Math.round(totalCoverage / retailersToVisit)
-    : 0;
+  // The total manpower is fixed to 6 as per admin requirement.
+  const totalManpower = 6;
 
   // Round 3 benefit: Company reimburses 1 DSR salary (₹20,000)
   const reimbursedDSR = 1;

@@ -19,9 +19,8 @@ const GameDistributionRound5SalesTeam = () => {
   const levelLabels = ["Low", "Medium", "High"];
 
   const totalCoverage = 2050; 
-  const totalManpower = retailersToVisit > 0
-    ? Math.round(totalCoverage / retailersToVisit)
-    : 0;
+  // The total manpower is fixed to 6 as per admin requirement.
+  const totalManpower = 6;
 
   // Save to localStorage
   useEffect(() => {

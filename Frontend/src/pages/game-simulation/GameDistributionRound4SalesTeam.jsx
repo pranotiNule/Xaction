@@ -37,9 +37,8 @@ const GameDistributionRound4SalesTeam = () => {
 
   // Total Coverage = 1050 existing + 1000 new (from R3)
   const totalCoverage = 2050; 
-  const totalManpower = retailersToVisit > 0
-    ? Math.round(totalCoverage / retailersToVisit)
-    : 0;
+  // The total manpower is fixed to 5 as per admin requirement.
+  const totalManpower = 5;
 
   // Round 4: Company has taken away the 1 DSR subsidy (20,000)
   const reimbursedDSR = 0;

@@ -160,7 +160,7 @@ const GameDistributionSummary = () => {
       r.roi ? parseFloat(r.roi).toFixed(2) + "%" : "—",
       r.satisfaction || "—",
       r.cashInHand !== null && r.cashInHand !== undefined
-        ? new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(Math.round(r.cashInHand))
+        ? "Rs. " + new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(Math.round(r.cashInHand))
         : "—"
     ]);
 
@@ -295,18 +295,7 @@ const GameDistributionSummary = () => {
             </div>
           </div>
 
-          {/* Legend */}
-          <div className="flex flex-wrap justify-center gap-4 mb-8 text-xs font-medium text-gray-500">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-emerald-700 inline-block"></span> High / ROI &gt; 10%
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> Medium / ROI 0–10%
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-red-600 inline-block"></span> Low / Negative ROI
-            </span>
-          </div>
+
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mt-4">

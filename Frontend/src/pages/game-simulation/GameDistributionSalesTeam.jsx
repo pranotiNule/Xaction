@@ -40,10 +40,9 @@ const GameDistributionSalesTeam = () => {
   const levelLabels = ["Low", "Medium", "High"];
 
   // Total Manpower = Coverage / Retailer Visit per Salesperson (rounded)
-  const totalCoverage = 1050;
-  const totalManpower = retailersToVisit > 0
-    ? Math.round(totalCoverage / retailersToVisit)
-    : 0;
+  // Total Manpower = Coverage / Retailer Visit per Salesperson (rounded)
+  // The total manpower is fixed to 6 as per admin requirement.
+  const totalManpower = 6;
 
   // Save to localStorage whenever state changes
   useEffect(() => {
